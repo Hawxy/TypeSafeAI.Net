@@ -26,6 +26,7 @@ using TypeSafeAI;
 
 using var client = new TypeSafeClient("your-api-key");
 
+// build your questions
 var q = new QuestionSet();
 var category = q.Choice<TicketCategory>("What is this ticket about?");
 var urgent   = q.Noul("Does this convey urgency?", yes: "Explicitly time-sensitive", no: "No urgency expressed");
@@ -91,13 +92,13 @@ var state = TypeSafeContent.FromNode(new JsonObject
 var state2 = TypeSafeContent.FromObject(new { message, orderId });
 ```
 
-### Many states, one question set
+### Parallel Questions
 
 ```csharp
 var results = await client.SystemOneManyAsync(passages, q, maxConcurrency: 8);
 ```
 
-One request per state, run in parallel, returned in input order. This is the shape the re-ranking and RAG cookbooks use.
+One request per state, run in parallel, returned in input order.
 
 ## Configuration
 
