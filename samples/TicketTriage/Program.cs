@@ -12,6 +12,13 @@ var category = q.Choice<TicketCategory>("What is this support ticket about?");
 var urgent = q.Noul("Does the customer convey urgency?", yes: "Explicitly time-sensitive or blocking", no: "No time pressure expressed");
 var anger = q.Score<Anger>("How angry is the customer?");
 
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(TypeSafeClientOptions.ApiKeyEnvironmentVariable)))
+{
+    Console.WriteLine($"Built {q.Count} questions ({string.Join(", ", q.Keys)}).");
+    Console.WriteLine($"Set {TypeSafeClientOptions.ApiKeyEnvironmentVariable} to send them to the API.");
+    return 0;
+}
+
 try
 {
     using var client = new TypeSafeClient();

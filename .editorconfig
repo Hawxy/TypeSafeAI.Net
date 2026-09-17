@@ -14,8 +14,12 @@ indent_size = 2
 [*.md]
 trim_trailing_whitespace = false
 
-[*.{ps1,cmd,bat}]
+[*.{ps1,bat}]
 end_of_line = crlf
+
+# Polyglot bootstrapper: the leading lines are read by bash, so it must stay LF.
+[build.cmd]
+end_of_line = lf
 
 [*.cs]
 # Style

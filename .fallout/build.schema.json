@@ -27,9 +27,8 @@
         "AotSmoke",
         "Clean",
         "Compile",
-        "LiveTest",
-        "Pack",
-        "Push",
+        "NugetPack",
+        "NugetPush",
         "Restore",
         "Test"
       ]
@@ -112,26 +111,10 @@
   "allOf": [
     {
       "properties": {
-        "AotRuntime": {
+        "NugetApiKey": {
           "type": "string",
-          "description": "Runtime identifier for the AOT smoke publish (defaults to the current platform)"
-        },
-        "Configuration": {
-          "type": "string",
-          "enum": [
-            "Debug",
-            "Release"
-          ],
-          "description": "Configuration to build - Default is 'Debug' (local) or 'Release' (server)"
-        },
-        "NuGetApiKey": {
-          "type": "string",
-          "description": "API key used to push NuGet packages",
+          "description": "NuGet API key, short-lived key issued by NuGet/login via trusted publishing",
           "default": "Secrets must be entered via 'nuke :secrets [profile]'"
-        },
-        "NuGetSource": {
-          "type": "string",
-          "description": "NuGet source to push packages to"
         },
         "Solution": {
           "type": "string",
@@ -139,7 +122,7 @@
         },
         "TypeSafeApiKey": {
           "type": "string",
-          "description": "TypeSafe API key; enables the LiveTest target",
+          "description": "TypeSafe API key; when set, the live API tests run instead of being skipped",
           "default": "Secrets must be entered via 'nuke :secrets [profile]'"
         }
       }

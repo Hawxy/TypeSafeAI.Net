@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/build/">
-    <Project Path="build/_build.csproj" />
+    <Project Path="build/_build.csproj">
+      <!-- The build project runs the build; it must not be rebuilt as part of the solution. -->
+      <Build Solution="*|*" Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/TypeSafeAI/TypeSafeAI.csproj" />

@@ -1,0 +1,3 @@
+* text=auto
+build.cmd text eol=lf
+build.sh text eol=lf

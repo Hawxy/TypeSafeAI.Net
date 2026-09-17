@@ -19,7 +19,6 @@ TestResults/
 # NuGet
 *.nupkg
 *.snupkg
-!artifacts/packages/.gitkeep
 
 # OS
 .DS_Store

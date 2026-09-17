@@ -237,17 +237,16 @@ Noul answers become `NumericMetric`s (or `BooleanMetric`s per question), choice 
 
 ## Building
 
-The build is a [Fallout](https://fallout.build) C# project in `build/`:
+The build is a [Fallout](https://fallout.build) C# project in `build/`, driven by `build.cmd` on every platform:
 
 ```bash
-./build.sh Test        # restore, compile, run the unit tests
-./build.sh Pack        # packages into artifacts/packages
-./build.sh LiveTest    # live API tests; needs --type-safe-api-key or TYPESAFE_API_KEY
-./build.sh AotSmoke    # publishes the TicketTriage sample with native AOT
+./build.cmd Test        # restore, compile (Release), run every test project; live tests skip without TYPESAFE_API_KEY
+./build.cmd AotSmoke    # publishes the TicketTriage sample with native AOT and runs it
+./build.cmd NugetPack   # packages into artifacts/
 ```
 
-Use `.\build.ps1` on Windows. Versions come from GitVersion; the GitHub Actions workflow in `.github/workflows` is generated from the attribute on `build/Build.cs`.
+The package version is set in `Package.Build.props`. The GitHub Actions workflows in `.github/workflows` are generated from the attributes on `build/Build.cs`: `Build & Test` runs on pushes and pull requests to `main`, and `Manual Nuget Push` publishes to nuget.org through [trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing) when dispatched by hand (it needs a `NUGET_USER` repository secret naming the nuget.org profile that owns the policy).
 
 ## License
 
-MIT.
+Apache-2.0. Copyright 2026 JT.

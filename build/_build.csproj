@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <PackageReference Include="Fallout.Common" />
-    <PackageDownload Include="GitVersion.Tool" Version="[6.8.2]" />
   </ItemGroup>
 
 </Project>
