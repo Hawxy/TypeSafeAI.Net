@@ -10,9 +10,11 @@
         <Copyright>JT 2026</Copyright>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
         <PackageTags>typesafe;ai;jev;system-one;llm;classification;judgment;$(PackageTags)</PackageTags>
     </PropertyGroup>
     <ItemGroup>
         <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false"/>
+        <None Include="$(MSBuildThisFileDirectory)assets/typesafe-ai-favicon.png" Pack="true" PackagePath="icon.png" Visible="false"/>
     </ItemGroup>
 </Project>
