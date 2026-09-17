@@ -1,0 +1,20 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Test code is allowed to lean on reflection-based serialization. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <!-- CS8602: Assert.ThrowsAsync returns a nullable exception that the assertion already guarantees is present. -->
+    <NoWarn>$(NoWarn);CS1591;CS8602</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+
+</Project>

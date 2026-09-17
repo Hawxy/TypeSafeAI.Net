@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/build/">
+    <Project Path="build/_build.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/TypeSafeAI/TypeSafeAI.csproj" />
+    <Project Path="src/TypeSafeAI.Extensions.AI/TypeSafeAI.Extensions.AI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TypeSafeAI.Tests/TypeSafeAI.Tests.csproj" />
+    <Project Path="tests/TypeSafeAI.Extensions.AI.Tests/TypeSafeAI.Extensions.AI.Tests.csproj" />
+    <Project Path="tests/TypeSafeAI.LiveTests/TypeSafeAI.LiveTests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/TicketTriage/TicketTriage.csproj" />
+    <Project Path="samples/GuardedChat/GuardedChat.csproj" />
+    <Project Path="samples/EvaluationReport/EvaluationReport.csproj" />
+  </Folder>
+  <Folder Name="/solution-items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+    <File Path="CHANGELOG.md" />
+    <File Path="GitVersion.yml" />
+    <File Path=".editorconfig" />
+  </Folder>
+</Solution>

@@ -1,0 +1,31 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+*.trx
+
+# Fallout
+.fallout/temp/
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+!artifacts/packages/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.env
+.env.*
+appsettings.*.local.json

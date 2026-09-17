@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Microsoft.Extensions.AI integration for TypeSafe AI: guardrail and routing chat-client middleware, an AIFunction bridge, and an IEvaluator adapter that turns TypeSafe judgments into evaluation metrics.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TypeSafeAI\TypeSafeAI.csproj" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TypeSafeAI.Extensions.AI\TypeSafeAI.Extensions.AI.csproj" />
+  </ItemGroup>
+
+</Project>
