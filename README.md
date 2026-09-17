@@ -10,7 +10,7 @@ A .NET SDK for the [TypeSafe AI](https://docs.typesafe.ai) System One API. Ask s
 
 | Package | Purpose |
 | --- | --- |
-| `TypeSafeAI` | Core client: `TypeSafeClient`, typed `QuestionSet`, retries, `HttpClientFactory` and DI support. Trim and AOT clean. |
+| `TypeSafeAI` | Core client: `TypeSafeClient`, typed `QuestionSet`, retries, `HttpClientFactory` and DI support. Trim and AOT Safe. |
 | `TypeSafeAI.Extensions.AI` | Microsoft.Extensions.AI integration: guardrail and routing chat-client middleware, an `AIFunction` tool bridge, and an `IEvaluator` adapter. |
 
 Targets `net8.0` and `net10.0`.
@@ -45,11 +45,22 @@ enum TicketCategory
 }
 ```
 
-Every question in a `QuestionSet` returns a handle. `result.Get(handle)` gives you the answer typed to that question, and the ids used on the wire are generated for you unless you pass `id:`. Ids are for your code only; the model never sees them.
+Every question in a `QuestionSet` returns a handle. `result.Get(handle)` gives you the answer typed to that question, and the ids used on the wire are generated for you unless you pass your own.
+
+### Dependency injection
+
+```csharp
+builder.Services.AddTypeSafeClient(builder.Configuration.GetSection("TypeSafe"));
+
+// or
+builder.Services.AddTypeSafeClient(o => o.ApiKey = "...");
+```
+
+`AddTypeSafeClient` registers `ITypeSafeClient` and `TypeSafeClient` as typed HTTP clients and returns the `IHttpClientBuilder`. Configuration is applied first, then your delegate.
 
 ### Untyped path
 
-If you would rather work with plain dictionaries, mirror the official SDKs:
+If you would rather work with plain dictionaries, you can mirror the official SDKs:
 
 ```csharp
 var response = await client.SystemOneAsync(
@@ -104,7 +115,7 @@ var client = new TypeSafeClient(new TypeSafeClientOptions
 
 Retries and per-attempt timeouts run on a [Polly](https://www.pollydocs.org) resilience pipeline. `RetryPolicy` decides what is retried and how long to wait (subclass it to change either), and `TimeProvider` on the options drives the delays, so tests can use a fake clock.
 
-Per request:
+Options can also be set per request:
 
 ```csharp
 await client.SystemOneAsync(state, q, new RequestOptions
@@ -116,18 +127,6 @@ await client.SystemOneAsync(state, q, new RequestOptions
     ExtraBody = new JsonObject { ["experimental_flag"] = true },   // forward compatibility
 });
 ```
-
-### Dependency injection
-
-```csharp
-builder.Services.AddTypeSafeClient(builder.Configuration.GetSection("TypeSafe"));
-
-// or
-builder.Services.AddTypeSafeClient(o => o.ApiKey = "...")
-    .AddStandardResilienceHandler();   // bring your own resilience; set MaxRetries = 0 to avoid double retries
-```
-
-`AddTypeSafeClient` registers `ITypeSafeClient` and `TypeSafeClient` as typed HTTP clients and returns the `IHttpClientBuilder`. Configuration is applied first, then your delegate.
 
 ### Errors
 
