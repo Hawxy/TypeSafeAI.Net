@@ -43,6 +43,13 @@ public abstract class Question
         return new ChoiceQuestion(instructions, ChoiceQuestion.CriteriaFromLabels(labels));
     }
 
+    /// <summary>Creates a pick-one question over plain labels with no descriptions.</summary>
+    public static ChoiceQuestion Choice(TypeSafeContent? instructions, IEnumerable<string> labels)
+    {
+        ArgumentNullException.ThrowIfNull(labels);
+        return new ChoiceQuestion(instructions, ChoiceQuestion.CriteriaFromLabels(labels));
+    }
+
     /// <summary>Creates a pick-one question whose labels and descriptions come from an enum, see <see cref="LabelAttribute"/>.</summary>
     public static ChoiceQuestion Choice<TEnum>(TypeSafeContent? instructions) where TEnum : struct, Enum =>
         new(instructions, EnumLabels<TEnum>.ToChoiceCriteria());

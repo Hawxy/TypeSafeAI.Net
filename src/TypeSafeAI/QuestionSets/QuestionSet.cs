@@ -46,6 +46,10 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
     public ChoiceHandle Choice(TypeSafeContent? instructions, params string[] labels) =>
         Add(null, Question.Choice(instructions, labels));
 
+    /// <summary>Adds a pick-one question over plain labels with an optional id.</summary>
+    public ChoiceHandle Choice(TypeSafeContent? instructions, IEnumerable<string> labels, string? id = null) =>
+        Add(id, Question.Choice(instructions, labels));
+
     /// <summary>Adds a pick-one question over labels with descriptions.</summary>
     public ChoiceHandle Choice(TypeSafeContent? instructions, IReadOnlyDictionary<string, TypeSafeContent?> criteria, string? id = null) =>
         Add(id, Question.Choice(instructions, criteria));
