@@ -9,7 +9,8 @@ using TypeSafeAI.Extensions.AI;
 // replace `EchoChatClient` with any IChatClient (OpenAI, Azure, Ollama...).
 
 var services = new ServiceCollection();
-services.AddTypeSafeClient();
+services.AddTypeSafeClient(Environment.GetEnvironmentVariable("TYPESAFE_API_KEY")
+    ?? throw new InvalidOperationException("Set TYPESAFE_API_KEY before running."));
 
 // Input guard: the hazard battery from the TypeSafe guardrails cookbook.
 var input = new QuestionSet();

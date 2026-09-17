@@ -12,16 +12,17 @@ var category = q.Choice<TicketCategory>("What is this support ticket about?");
 var urgent = q.Noul("Does the customer convey urgency?", yes: "Explicitly time-sensitive or blocking", no: "No time pressure expressed");
 var anger = q.Score<Anger>("How angry is the customer?");
 
-if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(TypeSafeClientOptions.ApiKeyEnvironmentVariable)))
+var apiKey = Environment.GetEnvironmentVariable("TYPESAFE_API_KEY");
+if (string.IsNullOrEmpty(apiKey))
 {
     Console.WriteLine($"Built {q.Count} questions ({string.Join(", ", q.Keys)}).");
-    Console.WriteLine($"Set {TypeSafeClientOptions.ApiKeyEnvironmentVariable} to send them to the API.");
+    Console.WriteLine("Set TYPESAFE_API_KEY to send them to the API.");
     return 0;
 }
 
 try
 {
-    using var client = new TypeSafeClient();
+    using var client = new TypeSafeClient(apiKey);
     var result = await client.SystemOneAsync(ticket, q);
 
     var c = result.Get(category);

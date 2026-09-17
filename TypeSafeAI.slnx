@@ -1,8 +1,7 @@
 <Solution>
   <Folder Name="/build/">
     <Project Path="build/_build.csproj">
-      <!-- The build project runs the build; it must not be rebuilt as part of the solution. -->
-      <Build Solution="*|*" Project="false" />
+      <Build Project="false" />
     </Project>
   </Folder>
   <Folder Name="/src/">
@@ -24,6 +23,7 @@
     <File Path="Directory.Packages.props" />
     <File Path="global.json" />
     <File Path="nuget.config" />
+    <File Path="Package.Build.props" />
     <File Path="README.md" />
     <File Path="CHANGELOG.md" />
     <File Path="GitVersion.yml" />

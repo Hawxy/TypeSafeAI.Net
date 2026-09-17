@@ -20,12 +20,13 @@ public class LiveApiTests
 
     private static TypeSafeClient CreateClient()
     {
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(TypeSafeClientOptions.ApiKeyEnvironmentVariable)))
+        var apiKey = Environment.GetEnvironmentVariable("TYPESAFE_API_KEY");
+        if (string.IsNullOrEmpty(apiKey))
         {
             Skip.Test("TYPESAFE_API_KEY is not set.");
         }
 
-        return new TypeSafeClient();
+        return new TypeSafeClient(apiKey);
     }
 
     [Test]

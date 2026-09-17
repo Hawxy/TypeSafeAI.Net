@@ -9,7 +9,9 @@ using TypeSafeAI.Extensions.AI.Evaluation;
 // Microsoft.Extensions.AI.Evaluation reporting pipeline, then render the report with
 // `dotnet tool install -g Microsoft.Extensions.AI.Evaluation.Console` and `aieval report -p <storage> -o report.html`.
 
-using var client = new TypeSafeClient();
+var apiKey = Environment.GetEnvironmentVariable("TYPESAFE_API_KEY")
+    ?? throw new InvalidOperationException("Set TYPESAFE_API_KEY before running.");
+using var client = new TypeSafeClient(apiKey);
 
 var questions = new QuestionSet();
 questions.Noul("Is the assistant response grounded in the supplied policy text?", id: "Grounded");

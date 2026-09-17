@@ -15,7 +15,6 @@ public static class TypeSafeServiceCollectionExtensions
 
     /// <summary>
     /// Registers <see cref="ITypeSafeClient"/> and <see cref="TypeSafeClient"/> as typed HTTP clients.
-    /// Options are read from the <c>TYPESAFE_*</c> environment variables first, then from <paramref name="configure"/>.
     /// The returned builder accepts further <see cref="HttpClient"/> configuration, such as a resilience handler
     /// (set <see cref="TypeSafeClientOptions.MaxRetries"/> to 0 when you add one).
     /// </summary>
@@ -23,11 +22,12 @@ public static class TypeSafeServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<TypeSafeClientOptions>().Configure(options =>
+        var options = services.AddOptions<TypeSafeClientOptions>();
+        if (configure is not null)
         {
-            options.ApplyEnvironment();
-            configure?.Invoke(options);
-        });
+            options.Configure(configure);
+        }
+
         services.TryAddTransient<ITypeSafeClient>(sp => sp.GetRequiredService<TypeSafeClient>());
 
         // Per-attempt timeouts are enforced by the SDK; the HttpClient must not cut retries short.
@@ -48,7 +48,7 @@ public static class TypeSafeServiceCollectionExtensions
 
     /// <summary>
     /// Registers the client and binds options from a configuration section, for example <c>"TypeSafe"</c> in appsettings.json.
-    /// Environment variables are applied first, then the section, then <paramref name="configure"/>.
+    /// The section is applied first, then <paramref name="configure"/>.
     /// </summary>
     public static IHttpClientBuilder AddTypeSafeClient(this IServiceCollection services, IConfiguration configuration, Action<TypeSafeClientOptions>? configure = null)
     {

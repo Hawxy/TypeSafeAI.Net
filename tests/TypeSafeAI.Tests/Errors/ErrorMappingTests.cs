@@ -66,6 +66,6 @@ public class ErrorMappingTests
             using var _ = new TypeSafeClient(new HttpClient(new FakeHttpMessageHandler()), new TypeSafeClientOptions());
         });
 
-        await Assert.That(ex.Message).Contains("TYPESAFE_API_KEY");
+        await Assert.That(ex.Message).Contains("ApiKey");
     }
 }

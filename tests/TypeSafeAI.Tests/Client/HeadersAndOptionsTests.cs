@@ -33,29 +33,12 @@ public class HeadersAndOptionsTests
     }
 
     [Test]
-    [NotInParallel("environment")]
-    public async Task Options_read_environment_variables()
+    public async Task Api_key_constructor_uses_defaults()
     {
-        Environment.SetEnvironmentVariable("TYPESAFE_API_KEY", "env-key");
-        Environment.SetEnvironmentVariable("TYPESAFE_BASE_URL", "https://env.test");
-        Environment.SetEnvironmentVariable("TYPESAFE_DEFAULT_MODEL", "jev-env");
-        try
-        {
-            var options = TypeSafeClientOptions.FromEnvironment();
-            await Assert.That(options.ApiKey).IsEqualTo("env-key");
-            await Assert.That(options.BaseUrl).IsEqualTo(new Uri("https://env.test"));
-            await Assert.That(options.DefaultModel).IsEqualTo("jev-env");
-
-            using var client = new TypeSafeClient("explicit-key");
-            await Assert.That(client.Options.ApiKey).IsEqualTo("explicit-key");
-            await Assert.That(client.Options.DefaultModel).IsEqualTo("jev-env");
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("TYPESAFE_API_KEY", null);
-            Environment.SetEnvironmentVariable("TYPESAFE_BASE_URL", null);
-            Environment.SetEnvironmentVariable("TYPESAFE_DEFAULT_MODEL", null);
-        }
+        using var client = new TypeSafeClient("explicit-key");
+        await Assert.That(client.Options.ApiKey).IsEqualTo("explicit-key");
+        await Assert.That(client.Options.BaseUrl).IsEqualTo(new Uri(TypeSafeClientOptions.DefaultBaseUrl));
+        await Assert.That(client.Options.DefaultModel).IsEqualTo(TypeSafeClientOptions.DefaultModelName);
     }
 
     [Test]

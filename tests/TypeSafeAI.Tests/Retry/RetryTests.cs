@@ -161,12 +161,14 @@ public class RetryTests
     [Test]
     public async Task Timeouts_are_retried_then_surfaced_as_timeout_exception()
     {
-        var policy = new RecordingRetryPolicy();
+        // The real clock keeps the timeout from firing before the handler sees the request; no delay between attempts.
+        var policy = new RecordingRetryPolicy { InitialDelay = TimeSpan.Zero };
         var handler = new FakeHttpMessageHandler().Hang().Hang();
         using var client = TestClient.Create(handler, o =>
         {
             o.Timeout = TimeSpan.FromMilliseconds(50);
             o.MaxRetries = 1;
+            o.TimeProvider = TimeProvider.System;
         }, policy);
 
         var ex = await Assert.ThrowsAsync<TypeSafeTimeoutException>(() => client.SystemOneAsync(TestClient.UrgencyRequest()));

@@ -21,12 +21,10 @@ Targets `net8.0` and `net10.0`.
 dotnet add package TypeSafeAI
 ```
 
-Set `TYPESAFE_API_KEY` (from the TypeSafe console), then:
-
 ```csharp
 using TypeSafeAI;
 
-using var client = new TypeSafeClient();
+using var client = new TypeSafeClient("your-api-key");
 
 var q = new QuestionSet();
 var category = q.Choice<TicketCategory>("What is this ticket about?");
@@ -95,9 +93,9 @@ One request per state, run in parallel, returned in input order. This is the sha
 ```csharp
 var client = new TypeSafeClient(new TypeSafeClientOptions
 {
-    ApiKey = "...",                      // or TYPESAFE_API_KEY
-    BaseUrl = new Uri("https://api.typesafe.ai"),   // or TYPESAFE_BASE_URL
-    DefaultModel = "jev-latest",         // or TYPESAFE_DEFAULT_MODEL
+    ApiKey = "...",
+    BaseUrl = new Uri("https://api.typesafe.ai"),
+    DefaultModel = "jev-latest",
     Timeout = TimeSpan.FromSeconds(10),  // per attempt
     MaxRetries = 2,                      // 408, 429, 5xx, connection and timeout failures
     RetryPolicy = new RetryPolicy { MaxDelay = TimeSpan.FromSeconds(5) },
@@ -129,7 +127,7 @@ builder.Services.AddTypeSafeClient(o => o.ApiKey = "...")
     .AddStandardResilienceHandler();   // bring your own resilience; set MaxRetries = 0 to avoid double retries
 ```
 
-`AddTypeSafeClient` registers `ITypeSafeClient` and `TypeSafeClient` as typed HTTP clients and returns the `IHttpClientBuilder`. Environment variables are applied first, then configuration, then your delegate.
+`AddTypeSafeClient` registers `ITypeSafeClient` and `TypeSafeClient` as typed HTTP clients and returns the `IHttpClientBuilder`. Configuration is applied first, then your delegate.
 
 ### Errors
 

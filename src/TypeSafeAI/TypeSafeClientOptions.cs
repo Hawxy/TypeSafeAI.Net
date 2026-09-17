@@ -3,15 +3,6 @@ namespace TypeSafeAI;
 /// <summary>Configures a <see cref="TypeSafeClient"/>.</summary>
 public sealed class TypeSafeClientOptions
 {
-    /// <summary>Environment variable holding the API key.</summary>
-    public const string ApiKeyEnvironmentVariable = "TYPESAFE_API_KEY";
-
-    /// <summary>Environment variable overriding the base URL.</summary>
-    public const string BaseUrlEnvironmentVariable = "TYPESAFE_BASE_URL";
-
-    /// <summary>Environment variable overriding the default model.</summary>
-    public const string DefaultModelEnvironmentVariable = "TYPESAFE_DEFAULT_MODEL";
-
     /// <summary>The production API root.</summary>
     public const string DefaultBaseUrl = "https://api.typesafe.ai";
 
@@ -45,39 +36,11 @@ public sealed class TypeSafeClientOptions
     /// <summary>The clock behind retry delays and per-attempt timeouts. Replace it in tests to avoid real waits.</summary>
     public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
 
-    /// <summary>Creates options populated from the <c>TYPESAFE_*</c> environment variables.</summary>
-    public static TypeSafeClientOptions FromEnvironment()
-    {
-        var options = new TypeSafeClientOptions();
-        options.ApplyEnvironment();
-        return options;
-    }
-
-    /// <summary>Overrides values with any <c>TYPESAFE_*</c> environment variables that are set.</summary>
-    public void ApplyEnvironment()
-    {
-        if (Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable) is { Length: > 0 } apiKey)
-        {
-            ApiKey = apiKey;
-        }
-
-        if (Environment.GetEnvironmentVariable(BaseUrlEnvironmentVariable) is { Length: > 0 } baseUrl)
-        {
-            BaseUrl = new Uri(baseUrl, UriKind.Absolute);
-        }
-
-        if (Environment.GetEnvironmentVariable(DefaultModelEnvironmentVariable) is { Length: > 0 } model)
-        {
-            DefaultModel = model;
-        }
-    }
-
     internal void Validate()
     {
         if (string.IsNullOrWhiteSpace(ApiKey))
         {
-            throw new TypeSafeException(
-                $"No API key configured. Set {nameof(TypeSafeClientOptions)}.{nameof(ApiKey)} or the {ApiKeyEnvironmentVariable} environment variable.");
+            throw new TypeSafeException($"No API key configured. Set {nameof(TypeSafeClientOptions)}.{nameof(ApiKey)}.");
         }
 
         if (BaseUrl is null || !BaseUrl.IsAbsoluteUri)

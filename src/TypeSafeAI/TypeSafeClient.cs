@@ -13,15 +13,9 @@ public sealed class TypeSafeClient : ITypeSafeClient, IDisposable
     private readonly HttpPipeline _pipeline;
     private readonly Uri _systemOneUri;
 
-    /// <summary>Creates a client configured from the <c>TYPESAFE_*</c> environment variables.</summary>
-    public TypeSafeClient()
-        : this(TypeSafeClientOptions.FromEnvironment())
-    {
-    }
-
-    /// <summary>Creates a client with an API key; other settings come from the environment or defaults.</summary>
+    /// <summary>Creates a client with an API key and default settings.</summary>
     public TypeSafeClient(string apiKey)
-        : this(WithApiKey(apiKey))
+        : this(new TypeSafeClientOptions { ApiKey = apiKey })
     {
     }
 
@@ -108,13 +102,5 @@ public sealed class TypeSafeClient : ITypeSafeClient, IDisposable
         }
 
         return JsonSerializer.SerializeToUtf8Bytes(node, context.JsonObject);
-    }
-
-    private static TypeSafeClientOptions WithApiKey(string apiKey)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
-        var options = TypeSafeClientOptions.FromEnvironment();
-        options.ApiKey = apiKey;
-        return options;
     }
 }
