@@ -245,7 +245,7 @@ The build is a [Fallout](https://fallout.build) C# project in `build/`, driven b
 ./build.cmd NugetPack   # packages into artifacts/
 ```
 
-The package version is set in `Package.Build.props`. The GitHub Actions workflows in `.github/workflows` are generated from the attributes on `build/Build.cs`: `Build & Test` runs on pushes and pull requests to `main`, and `Manual Nuget Push` publishes to nuget.org through [trusted publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing) when dispatched by hand (it needs a `NUGET_USER` repository secret naming the nuget.org profile that owns the policy).
+The package version is set in `Package.Build.props`. The GitHub Actions workflows in `.github/workflows` are generated from the attributes on `build/Build.cs`: `Build & Test` runs on pushes and pull requests to `main`, and `Manual Nuget Push` publishes when dispatched by hand.
 
 ## License
 
