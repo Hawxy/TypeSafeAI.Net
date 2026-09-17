@@ -146,8 +146,13 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out Question value) => _questions.TryGetValue(key, out value);
 
     /// <inheritdoc />
-    public IEnumerator<KeyValuePair<string, Question>> GetEnumerator() =>
-        _handles.Select(h => new KeyValuePair<string, Question>(h.Id, h.Question)).GetEnumerator();
+    public IEnumerator<KeyValuePair<string, Question>> GetEnumerator()
+    {
+        foreach (var handle in _handles)
+        {
+            yield return new KeyValuePair<string, Question>(handle.Id, handle.Question);
+        }
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -159,7 +164,7 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
         return handle;
     }
 
-    private string Reserve(string? id)
+    private ReservedId Reserve(string? id)
     {
         if (id is not null)
         {
@@ -173,7 +178,7 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
                 throw new ArgumentException($"A question with id '{id}' already exists.", nameof(id));
             }
 
-            return id;
+            return new ReservedId(id, Generated: false);
         }
 
         string generated;
@@ -183,7 +188,7 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
         }
         while (_questions.ContainsKey(generated));
 
-        return generated;
+        return new ReservedId(generated, Generated: true);
     }
 
     private static TQuestion Check<TQuestion>(TQuestion question)

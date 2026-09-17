@@ -5,7 +5,7 @@ namespace TypeSafeAI;
 /// <summary>The answers to a <see cref="QuestionSet"/>, readable through the set's typed handles.</summary>
 public sealed class QuestionSetResult
 {
-    private readonly Dictionary<string, object> _bound = new(StringComparer.Ordinal);
+    private Dictionary<string, object>? _bound;
 
     internal QuestionSetResult(QuestionSet questions, SystemOneResponse response)
     {
@@ -37,7 +37,7 @@ public sealed class QuestionSetResult
     public TResult Get<TResult>(IQuestionHandle<TResult> handle)
     {
         ArgumentNullException.ThrowIfNull(handle);
-        if (_bound.TryGetValue(handle.Id, out var cached))
+        if (_bound is not null && _bound.TryGetValue(handle.Id, out var cached))
         {
             return (TResult)cached;
         }
@@ -50,7 +50,7 @@ public sealed class QuestionSetResult
         var bound = handle.Bind(answer);
         if (bound is not null)
         {
-            _bound[handle.Id] = bound;
+            (_bound ??= new Dictionary<string, object>(StringComparer.Ordinal))[handle.Id] = bound;
         }
 
         return bound;

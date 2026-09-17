@@ -5,9 +5,12 @@ namespace TypeSafeAI;
 /// <summary>The answer to a <see cref="ChoiceQuestion"/>: the most likely label and the full distribution.</summary>
 public sealed class ChoiceAnswer : Answer
 {
+    /// <summary>The wire name of this answer type.</summary>
+    public const string TypeName = "choice";
+
     /// <inheritdoc />
     [JsonIgnore]
-    public override string Type => "choice";
+    public override string Type => TypeName;
 
     /// <summary>The label with the highest probability.</summary>
     [JsonPropertyName("choice")]
@@ -22,7 +25,7 @@ public sealed class ChoiceAnswer : Answer
     public double Confidence { get; init; }
 
     /// <summary>Gets the probability of a label, or 0 when the label was not offered.</summary>
-    public double ProbabilityOf(string label) => Probabilities.TryGetValue(label, out var p) ? p : 0;
+    public double ProbabilityOf(string label) => Probabilities.GetValueOrDefault(label);
 
     /// <summary>The labels ordered from most to least likely.</summary>
     public IEnumerable<KeyValuePair<string, double>> Ranked() => Probabilities.OrderByDescending(p => p.Value);

@@ -11,10 +11,10 @@ internal static partial class Log
     public static partial void RequestCompleted(ILogger logger, string method, string path, int statusCode, TimeSpan elapsed, int attempts, string? requestId);
 
     [LoggerMessage(EventId = 3, Level = LogLevel.Warning, Message = "TypeSafe {Method} {Path} attempt {Attempt} failed with {Reason}; retrying in {Delay} (request id {RequestId})")]
-    public static partial void Retrying(ILogger logger, string method, string path, int attempt, string reason, TimeSpan delay, string? requestId);
+    public static partial void Retrying(ILogger logger, string method, string path, int attempt, RetryContext reason, TimeSpan delay, string? requestId);
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Error, Message = "TypeSafe {Method} {Path} failed after {Attempts} attempt(s) with {Reason} (request id {RequestId})")]
-    public static partial void RequestFailed(ILogger logger, string method, string path, int attempts, string reason, string? requestId);
+    public static partial void RequestFailed(ILogger logger, string method, string path, int attempts, RetryContext reason, string? requestId);
 
     [LoggerMessage(EventId = 5, Level = LogLevel.Trace, Message = "TypeSafe request body: {Body}")]
     public static partial void RequestBody(ILogger logger, string body);

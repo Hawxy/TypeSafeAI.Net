@@ -27,12 +27,59 @@ public sealed class TypeSafeGuardrailChatClient : DelegatingChatClient
     }
 
     /// <inheritdoc />
-    public override async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    public override Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var conversation = messages as IReadOnlyList<ChatMessage> ?? messages.ToList();
-        var outcomes = new List<GuardrailOutcome>();
+        var conversation = messages.AsReadOnlyList();
+        return GuardedAsync(conversation, () => base.GetResponseAsync(conversation, options, cancellationToken), cancellationToken);
+    }
 
-        var inputOutcome = await GuardInputAsync(conversation, cancellationToken).ConfigureAwait(false);
+    /// <inheritdoc />
+    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var conversation = messages.AsReadOnlyList();
+
+        if (_options.OutputQuestions is not null && _options.GuardStreamingOutput)
+        {
+            // Buffer the whole response so the output guard can judge it before anything reaches the caller.
+            var guarded = await GuardedAsync(
+                conversation,
+                () => base.GetStreamingResponseAsync(conversation, options, cancellationToken).ToChatResponseAsync(cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+
+            foreach (var update in guarded.ToChatResponseUpdates())
+            {
+                yield return update;
+            }
+
+            yield break;
+        }
+
+        var inputOutcome = await GuardAsync(GuardrailDirection.Input, conversation, null, cancellationToken).ConfigureAwait(false);
+        if (inputOutcome?.Action == GuardrailAction.Block)
+        {
+            foreach (var update in Blocked(inputOutcome, [inputOutcome]).ToChatResponseUpdates())
+            {
+                yield return update;
+            }
+
+            yield break;
+        }
+
+        await foreach (var update in base.GetStreamingResponseAsync(conversation, options, cancellationToken).ConfigureAwait(false))
+        {
+            yield return update;
+        }
+    }
+
+    // Input guard, inner call, output guard: the sequence both the non-streaming and the buffered streaming path follow.
+    private async Task<ChatResponse> GuardedAsync(IReadOnlyList<ChatMessage> conversation, Func<Task<ChatResponse>> inner, CancellationToken cancellationToken)
+    {
+        var outcomes = new List<GuardrailOutcome>(2);
+
+        var inputOutcome = await GuardAsync(GuardrailDirection.Input, conversation, null, cancellationToken).ConfigureAwait(false);
         if (inputOutcome is not null)
         {
             outcomes.Add(inputOutcome);
@@ -42,9 +89,9 @@ public sealed class TypeSafeGuardrailChatClient : DelegatingChatClient
             }
         }
 
-        var response = await base.GetResponseAsync(conversation, options, cancellationToken).ConfigureAwait(false);
+        var response = await inner().ConfigureAwait(false);
 
-        var outputOutcome = await GuardOutputAsync(conversation, response, cancellationToken).ConfigureAwait(false);
+        var outputOutcome = await GuardAsync(GuardrailDirection.Output, conversation, response, cancellationToken).ConfigureAwait(false);
         if (outputOutcome is not null)
         {
             outcomes.Add(outputOutcome);
@@ -58,88 +105,21 @@ public sealed class TypeSafeGuardrailChatClient : DelegatingChatClient
         return response;
     }
 
-    /// <inheritdoc />
-    public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages,
-        ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    private async Task<GuardrailOutcome?> GuardAsync(GuardrailDirection direction, IReadOnlyList<ChatMessage> conversation, ChatResponse? response, CancellationToken cancellationToken)
     {
-        var conversation = messages as IReadOnlyList<ChatMessage> ?? messages.ToList();
-
-        var inputOutcome = await GuardInputAsync(conversation, cancellationToken).ConfigureAwait(false);
-        if (inputOutcome?.Action == GuardrailAction.Block)
-        {
-            foreach (var update in Blocked(inputOutcome, [inputOutcome]).ToChatResponseUpdates())
-            {
-                yield return update;
-            }
-
-            yield break;
-        }
-
-        if (_options.OutputQuestions is null || !_options.GuardStreamingOutput)
-        {
-            await foreach (var update in base.GetStreamingResponseAsync(conversation, options, cancellationToken).ConfigureAwait(false))
-            {
-                yield return update;
-            }
-
-            yield break;
-        }
-
-        // Buffer the whole response so the output guard can judge it before anything reaches the caller.
-        var response = await base.GetStreamingResponseAsync(conversation, options, cancellationToken).ToChatResponseAsync(cancellationToken).ConfigureAwait(false);
-        var outcomes = new List<GuardrailOutcome>();
-        if (inputOutcome is not null)
-        {
-            outcomes.Add(inputOutcome);
-        }
-
-        var outputOutcome = await GuardOutputAsync(conversation, response, cancellationToken).ConfigureAwait(false);
-        if (outputOutcome is not null)
-        {
-            outcomes.Add(outputOutcome);
-            if (outputOutcome.Action == GuardrailAction.Block)
-            {
-                response = Blocked(outputOutcome, outcomes);
-            }
-        }
-
-        if (outputOutcome?.Action != GuardrailAction.Block)
-        {
-            Annotate(response, outcomes);
-        }
-
-        foreach (var update in response.ToChatResponseUpdates())
-        {
-            yield return update;
-        }
-    }
-
-    private async Task<GuardrailOutcome?> GuardInputAsync(IReadOnlyList<ChatMessage> conversation, CancellationToken cancellationToken)
-    {
-        if (_options.InputQuestions is null)
+        var input = direction == GuardrailDirection.Input;
+        var questions = input ? _options.InputQuestions : _options.OutputQuestions;
+        if (questions is null)
         {
             return null;
         }
 
-        var state = _options.InputStateBuilder?.Invoke(conversation) ?? ChatState.FromMessages(conversation);
-        var result = await _typeSafe.SystemOneAsync(state, _options.InputQuestions, _options.RequestOptions, cancellationToken).ConfigureAwait(false);
-        var decision = _options.PolicyFor(GuardrailDirection.Input)(new GuardrailAssessment(GuardrailDirection.Input, result, conversation, null));
-        return new GuardrailOutcome(GuardrailDirection.Input, decision.Action, decision.Reason, result.RequestId);
-    }
-
-    private async Task<GuardrailOutcome?> GuardOutputAsync(IReadOnlyList<ChatMessage> conversation, ChatResponse response, CancellationToken cancellationToken)
-    {
-        if (_options.OutputQuestions is null)
-        {
-            return null;
-        }
-
-        var state = _options.OutputStateBuilder?.Invoke(conversation, response) ?? ChatState.FromMessages(conversation, response);
-        var result = await _typeSafe.SystemOneAsync(state, _options.OutputQuestions, _options.RequestOptions, cancellationToken).ConfigureAwait(false);
-        var decision = _options.PolicyFor(GuardrailDirection.Output)(new GuardrailAssessment(GuardrailDirection.Output, result, conversation, response));
-        return new GuardrailOutcome(GuardrailDirection.Output, decision.Action, decision.Reason, result.RequestId);
+        var state = input
+            ? _options.InputStateBuilder?.Invoke(conversation) ?? ChatState.FromMessages(conversation)
+            : _options.OutputStateBuilder?.Invoke(conversation, response!) ?? ChatState.FromMessages(conversation, response);
+        var result = await _typeSafe.SystemOneAsync(state, questions, _options.RequestOptions, cancellationToken).ConfigureAwait(false);
+        var decision = _options.PolicyFor(direction)(new GuardrailAssessment(direction, result, conversation, response));
+        return new GuardrailOutcome(direction, decision.Action, decision.Reason, result.RequestId);
     }
 
     private ChatResponse Blocked(GuardrailOutcome outcome, IReadOnlyList<GuardrailOutcome> outcomes)

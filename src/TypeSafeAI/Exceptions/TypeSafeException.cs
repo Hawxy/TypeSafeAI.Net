@@ -17,6 +17,9 @@ public class TypeSafeException : Exception
 
     /// <summary>The <c>x-typesafe-request-id</c> of the failed request, when one was received.</summary>
     public string? RequestId { get; init; }
+
+    /// <summary>The message, followed by the request id when one was received.</summary>
+    public override string Message => RequestId is null ? base.Message : $"{base.Message} (request id {RequestId})";
 }
 
 /// <summary>A successful HTTP response whose body could not be understood, or an answer that does not match its question.</summary>

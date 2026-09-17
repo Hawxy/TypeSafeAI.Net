@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.AI;
@@ -26,13 +27,9 @@ public static class TypeSafeAIFunctions
         RequestOptions? requestOptions = null)
     {
         ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(questions);
+        Internal.RequireQuestions(questions, nameof(questions));
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
-        if (questions.Count == 0)
-        {
-            throw new ArgumentException("At least one question is required.", nameof(questions));
-        }
 
         return new JudgeFunction(client, questions, name, description, stateDescription, requestOptions);
     }
@@ -98,46 +95,46 @@ public static class TypeSafeAIFunctions
                 },
                 ["required"] = new JsonArray(StateParameter),
             };
-            return JsonSerializer.SerializeToElement(schema, FunctionJsonContext.Default.JsonObject);
+            return JsonSerializer.SerializeToElement(schema, AIJsonUtilities.DefaultOptions.GetTypeInfo(typeof(JsonObject)));
         }
 
-        // A compact, model-friendly rendering of the answers.
-        private static JsonElement ToJson(SystemOneResponse response)
+        // A compact, model-friendly rendering of the answers. The invoking client serialises the node.
+        private static JsonObject ToJson(SystemOneResponse response)
         {
             var answers = new JsonObject();
             foreach (var pair in response.Answers)
             {
                 answers[pair.Key] = pair.Value switch
                 {
-                    NoulAnswer noul => new JsonObject { ["type"] = "noul", ["probability"] = noul.Probability },
+                    NoulAnswer noul => new JsonObject { ["type"] = noul.Type, ["probability"] = noul.Probability },
                     ChoiceAnswer choice => new JsonObject
                     {
-                        ["type"] = "choice",
+                        ["type"] = choice.Type,
                         ["choice"] = choice.Choice,
                         ["confidence"] = choice.Confidence,
                         ["probabilities"] = ToObject(choice.Probabilities),
                     },
                     ScoreAnswer score => new JsonObject
                     {
-                        ["type"] = "score",
+                        ["type"] = score.Type,
                         ["score"] = score.Score,
                         ["confidence"] = score.Confidence,
-                        ["probabilities"] = ToObject(score.Probabilities.ToDictionary(p => p.Key.ToString(System.Globalization.CultureInfo.InvariantCulture), p => p.Value)),
+                        ["probabilities"] = ToObject(score.Probabilities),
                     },
                     _ => new JsonObject { ["type"] = pair.Value.Type },
                 };
             }
 
-            var result = new JsonObject { ["model"] = response.Model, ["answers"] = answers };
-            return JsonSerializer.SerializeToElement(result, FunctionJsonContext.Default.JsonObject);
+            return new JsonObject { ["model"] = response.Model, ["answers"] = answers };
         }
 
-        private static JsonObject ToObject(IReadOnlyDictionary<string, double> values)
+        private static JsonObject ToObject<TKey>(IReadOnlyDictionary<TKey, double> values)
+            where TKey : notnull
         {
             var obj = new JsonObject();
             foreach (var pair in values)
             {
-                obj[pair.Key] = pair.Value;
+                obj[Convert.ToString(pair.Key, CultureInfo.InvariantCulture)!] = pair.Value;
             }
 
             return obj;

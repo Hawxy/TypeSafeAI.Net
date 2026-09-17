@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.AI;
 using TypeSafeAI.Extensions.AI.Tests.Fakes;
 
@@ -30,11 +31,11 @@ public class AIFunctionTests
 
         var result = await function.InvokeAsync(new AIFunctionArguments { ["state"] = "My invoice is wrong and I need it fixed today" });
 
-        var json = (JsonElement)result!;
-        await Assert.That(json.GetProperty("model").GetString()).IsEqualTo("jev-test");
-        await Assert.That(json.GetProperty("answers").GetProperty("urgent").GetProperty("probability").GetDouble()).IsEqualTo(0.8);
-        await Assert.That(json.GetProperty("answers").GetProperty("category").GetProperty("choice").GetString()).IsEqualTo("billing");
-        await Assert.That(json.GetProperty("answers").GetProperty("anger").GetProperty("probabilities").GetProperty("1").GetDouble()).IsEqualTo(0.4);
+        var json = (JsonObject)result!;
+        await Assert.That(json["model"]!.GetValue<string>()).IsEqualTo("jev-test");
+        await Assert.That(json["answers"]!["urgent"]!["probability"]!.GetValue<double>()).IsEqualTo(0.8);
+        await Assert.That(json["answers"]!["category"]!["choice"]!.GetValue<string>()).IsEqualTo("billing");
+        await Assert.That(json["answers"]!["anger"]!["probabilities"]!["1"]!.GetValue<double>()).IsEqualTo(0.4);
         await Assert.That(typeSafe.Requests[0].State.Text).IsEqualTo("My invoice is wrong and I need it fixed today");
     }
 

@@ -104,6 +104,8 @@ var client = new TypeSafeClient(new TypeSafeClientOptions
 });
 ```
 
+Retries and per-attempt timeouts run on a [Polly](https://www.pollydocs.org) resilience pipeline. `RetryPolicy` decides what is retried and how long to wait (subclass it to change either), and `TimeProvider` on the options drives the delays, so tests can use a fake clock.
+
 Per request:
 
 ```csharp

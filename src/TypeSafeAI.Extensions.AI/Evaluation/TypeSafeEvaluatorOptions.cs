@@ -64,10 +64,7 @@ public sealed class TypeSafeEvaluationInput
 /// <summary>Configures <see cref="TypeSafeEvaluator"/>.</summary>
 public sealed class TypeSafeEvaluatorOptions
 {
-    /// <summary>The model to use; defaults to the client's default model.</summary>
-    public string? Model { get; set; }
-
-    /// <summary>Per-request overrides for the TypeSafe call.</summary>
+    /// <summary>Per-request overrides for the TypeSafe call, including the model.</summary>
     public RequestOptions? RequestOptions { get; set; }
 
     /// <summary>Metric name per question id. Questions not listed use their id.</summary>

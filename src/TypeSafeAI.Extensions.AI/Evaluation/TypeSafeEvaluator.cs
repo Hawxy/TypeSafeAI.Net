@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 
@@ -22,17 +23,22 @@ public sealed class TypeSafeEvaluator : IEvaluator
     public TypeSafeEvaluator(ITypeSafeClient client, QuestionSet questions, TypeSafeEvaluatorOptions? options = null)
         : this(client, (IReadOnlyDictionary<string, Question>)questions, options)
     {
+        foreach (var handle in questions.Handles)
+        {
+            if (handle.HasGeneratedId && !_options.MetricNames.ContainsKey(handle.Id))
+            {
+                throw new ArgumentException(
+                    $"Question '{handle.Id}' has a generated id. Give evaluator questions explicit ids or map them in {nameof(TypeSafeEvaluatorOptions.MetricNames)}.",
+                    nameof(questions));
+            }
+        }
     }
 
     /// <summary>Creates an evaluator over questions keyed by id. Each id becomes the metric name unless overridden.</summary>
     public TypeSafeEvaluator(ITypeSafeClient client, IReadOnlyDictionary<string, Question> questions, TypeSafeEvaluatorOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(questions);
-        if (questions.Count == 0)
-        {
-            throw new ArgumentException("At least one question is required.", nameof(questions));
-        }
+        Internal.RequireQuestions(questions, nameof(questions));
 
         _client = client;
         _questions = questions;
@@ -41,15 +47,7 @@ public sealed class TypeSafeEvaluator : IEvaluator
         var names = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var id in questions.Keys)
         {
-            var name = _options.MetricNames.TryGetValue(id, out var custom) ? custom : id;
-            if (IsGeneratedId(id) && !_options.MetricNames.ContainsKey(id))
-            {
-                throw new ArgumentException(
-                    $"Question '{id}' has a generated id. Give evaluator questions explicit ids or map them in {nameof(TypeSafeEvaluatorOptions.MetricNames)}.",
-                    nameof(questions));
-            }
-
-            names[id] = name;
+            names[id] = _options.MetricNames.TryGetValue(id, out var custom) ? custom : id;
         }
 
         if (names.Values.Distinct(StringComparer.Ordinal).Count() != names.Count)
@@ -75,111 +73,114 @@ public sealed class TypeSafeEvaluator : IEvaluator
         ArgumentNullException.ThrowIfNull(messages);
         ArgumentNullException.ThrowIfNull(modelResponse);
 
-        var conversation = messages as IReadOnlyList<ChatMessage> ?? messages.ToList();
-        var context = additionalContext as IReadOnlyList<EvaluationContext> ?? additionalContext?.ToList() ?? [];
+        var conversation = messages.AsReadOnlyList();
+        var context = additionalContext?.AsReadOnlyList() ?? [];
         var input = new TypeSafeEvaluationInput(conversation, modelResponse, context);
         var state = _options.StateBuilder?.Invoke(input) ?? DefaultState(input);
-
-        var requestOptions = _options.RequestOptions;
-        if (_options.Model is not null)
-        {
-            requestOptions = new RequestOptions
-            {
-                Model = _options.Model,
-                Timeout = requestOptions?.Timeout,
-                MaxRetries = requestOptions?.MaxRetries,
-                RetryPolicy = requestOptions?.RetryPolicy,
-                ExtraHeaders = requestOptions?.ExtraHeaders,
-                ExtraBody = requestOptions?.ExtraBody,
-            };
-        }
 
         SystemOneResponse response;
         try
         {
-            response = await _client.SystemOneAsync(state, _questions, requestOptions, cancellationToken).ConfigureAwait(false);
+            response = await _client.SystemOneAsync(state, _questions, _options.RequestOptions, cancellationToken).ConfigureAwait(false);
         }
         catch (TypeSafeException ex)
         {
-            return Failed(ex, context);
+            return new EvaluationResult(_questions.Select(pair => Placeholder(pair.Key, pair.Value, ex.Message, context)));
         }
 
         var metrics = new List<EvaluationMetric>(_questions.Count);
-        foreach (var pair in _questions)
+        foreach (var (id, question) in _questions)
         {
-            var name = _metricNames[pair.Key];
-            if (!response.Answers.TryGetValue(pair.Key, out var answer))
+            if (!response.Answers.TryGetValue(id, out var answer))
             {
-                var missing = new NumericMetric(name);
-                missing.AddDiagnostics(EvaluationDiagnostic.Error($"TypeSafe returned no answer for question '{pair.Key}'."));
-                metrics.Add(missing);
+                metrics.Add(Placeholder(id, question, $"TypeSafe returned no answer for question '{id}'.", context));
                 continue;
             }
 
-            var metric = ToMetric(pair.Key, name, pair.Value, answer);
-            AddCommonMetadata(metric, response, pair.Value);
-            metric.Interpretation = _options.Interpret?.Invoke(new TypeSafeMetricContext(pair.Key, name, pair.Value, answer, metric));
-            if (context.Count > 0)
-            {
-                metric.AddOrUpdateContext(context);
-            }
-
+            var metric = ToMetric(id, question, answer);
+            AddCommonMetadata(metric, response, question);
+            metric.Interpretation = _options.Interpret?.Invoke(new TypeSafeMetricContext(id, metric.Name, question, answer, metric));
+            AddContext(metric, context);
             metrics.Add(metric);
         }
 
         return new EvaluationResult(metrics);
     }
 
-    private EvaluationMetric ToMetric(string questionId, string name, Question question, Answer answer)
+    // The metric type is decided by the question, so every path (answer, missing answer, failed request) reports the same shape.
+    private EvaluationMetric CreateMetric(string questionId, Question question)
     {
+        var name = _metricNames[questionId];
+        return question switch
+        {
+            NoulQuestion when _options.NoulMetricKinds.TryGetValue(questionId, out var kind) && kind == NoulMetricKind.Boolean => new BooleanMetric(name),
+            NoulQuestion or ScoreQuestion => new NumericMetric(name),
+            _ => new StringMetric(name),
+        };
+    }
+
+    private EvaluationMetric Placeholder(string questionId, Question question, string error, IReadOnlyList<EvaluationContext> context)
+    {
+        var metric = CreateMetric(questionId, question);
+        metric.AddDiagnostics(EvaluationDiagnostic.Error(error));
+        AddContext(metric, context);
+        return metric;
+    }
+
+    private EvaluationMetric ToMetric(string questionId, Question question, Answer answer)
+    {
+        var metric = CreateMetric(questionId, question);
         switch (answer)
         {
-            case NoulAnswer noul:
-                var kind = _options.NoulMetricKinds.TryGetValue(questionId, out var k) ? k : NoulMetricKind.Numeric;
-                EvaluationMetric metric = kind == NoulMetricKind.Boolean
-                    ? new BooleanMetric(name, noul.IsYes(_options.NoulThreshold))
-                    : new NumericMetric(name, noul.Probability);
+            case NoulAnswer noul when metric is BooleanMetric boolean:
+                boolean.Value = noul.IsYes(_options.NoulThreshold);
                 metric.AddOrUpdateMetadata(MetadataPrefix + "probability", Format(noul.Probability));
-                return metric;
+                break;
 
-            case ChoiceAnswer choice:
-                var choiceMetric = new StringMetric(name, choice.Choice);
-                choiceMetric.AddOrUpdateMetadata(MetadataPrefix + "confidence", Format(choice.Confidence));
+            case NoulAnswer noul when metric is NumericMetric numeric:
+                numeric.Value = noul.Probability;
+                metric.AddOrUpdateMetadata(MetadataPrefix + "probability", Format(noul.Probability));
+                break;
+
+            case ChoiceAnswer choice when metric is StringMetric text:
+                text.Value = choice.Choice;
+                metric.AddOrUpdateMetadata(MetadataPrefix + "confidence", Format(choice.Confidence));
                 if (_options.IncludeProbabilities)
                 {
                     foreach (var pair in choice.Probabilities)
                     {
-                        choiceMetric.AddOrUpdateMetadata(MetadataPrefix + "p." + pair.Key, Format(pair.Value));
+                        metric.AddOrUpdateMetadata(MetadataPrefix + "p." + pair.Key, Format(pair.Value));
                     }
                 }
 
-                return choiceMetric;
+                break;
 
-            case ScoreAnswer score:
-                var scoreMetric = new NumericMetric(name, score.Score);
-                scoreMetric.AddOrUpdateMetadata(MetadataPrefix + "confidence", Format(score.Confidence));
-                scoreMetric.AddOrUpdateMetadata(MetadataPrefix + "most_likely", score.MostLikelyLevel.ToString(CultureInfo.InvariantCulture));
+            case ScoreAnswer score when metric is NumericMetric numeric:
+                numeric.Value = score.Score;
+                metric.AddOrUpdateMetadata(MetadataPrefix + "confidence", Format(score.Confidence));
+                metric.AddOrUpdateMetadata(MetadataPrefix + "most_likely", score.MostLikelyLevel.ToString(CultureInfo.InvariantCulture));
                 foreach (var level in score.Levels)
                 {
                     var index = level.Index.ToString(CultureInfo.InvariantCulture);
                     if (level.Description is { } description)
                     {
-                        scoreMetric.AddOrUpdateMetadata(MetadataPrefix + "legend." + index, description.ToString());
+                        metric.AddOrUpdateMetadata(MetadataPrefix + "legend." + index, description.ToString());
                     }
 
                     if (_options.IncludeProbabilities)
                     {
-                        scoreMetric.AddOrUpdateMetadata(MetadataPrefix + "p." + index, Format(level.Probability));
+                        metric.AddOrUpdateMetadata(MetadataPrefix + "p." + index, Format(level.Probability));
                     }
                 }
 
-                return scoreMetric;
+                break;
 
             default:
-                var unknown = new StringMetric(name);
-                unknown.AddDiagnostics(EvaluationDiagnostic.Warning($"Unsupported answer type '{answer.Type}' for question '{questionId}'."));
-                return unknown;
+                metric.AddDiagnostics(EvaluationDiagnostic.Warning($"Question '{questionId}' is a {question.Type} question but the API returned a {answer.Type} answer."));
+                break;
         }
+
+        return metric;
     }
 
     private static void AddCommonMetadata(EvaluationMetric metric, SystemOneResponse response, Question question)
@@ -202,44 +203,37 @@ public sealed class TypeSafeEvaluator : IEvaluator
         }
     }
 
-    private EvaluationResult Failed(TypeSafeException exception, IReadOnlyList<EvaluationContext> context)
+    private static void AddContext(EvaluationMetric metric, IReadOnlyList<EvaluationContext> context)
     {
-        var message = exception.RequestId is null ? exception.Message : $"{exception.Message} (request id {exception.RequestId})";
-        var metrics = new List<EvaluationMetric>(_questions.Count);
-        foreach (var pair in _questions)
+        if (context.Count > 0)
         {
-            EvaluationMetric metric = pair.Value is ChoiceQuestion ? new StringMetric(_metricNames[pair.Key]) : new NumericMetric(_metricNames[pair.Key]);
-            metric.AddDiagnostics(EvaluationDiagnostic.Error(message));
-            if (context.Count > 0)
-            {
-                metric.AddOrUpdateContext(context);
-            }
-
-            metrics.Add(metric);
+            metric.AddOrUpdateContext(context);
         }
-
-        return new EvaluationResult(metrics);
     }
 
     private static TypeSafeContent DefaultState(TypeSafeEvaluationInput input)
     {
-        if (input.AdditionalContext.Count == 0)
+        Dictionary<string, string>? context = null;
+        if (input.AdditionalContext.Count > 0)
         {
-            return ChatState.FromMessages(input.Messages, input.Response);
-        }
+            context = new Dictionary<string, string>(input.AdditionalContext.Count, StringComparer.Ordinal);
+            foreach (var item in input.AdditionalContext)
+            {
+                var text = new StringBuilder();
+                foreach (var content in item.Contents)
+                {
+                    if (content is TextContent textContent)
+                    {
+                        text.Append(textContent.Text);
+                    }
+                }
 
-        var context = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var item in input.AdditionalContext)
-        {
-            var text = string.Concat(item.Contents.OfType<TextContent>().Select(t => t.Text));
-            context[item.Name] = text;
+                context[item.Name] = text.ToString();
+            }
         }
 
         return ChatState.FromMessages(input.Messages, input.Response, context);
     }
-
-    private static bool IsGeneratedId(string id) =>
-        id.Length > 1 && id[0] == 'q' && id.Skip(1).All(char.IsAsciiDigit);
 
     private static string Format(double value) => value.ToString("0.####", CultureInfo.InvariantCulture);
 }

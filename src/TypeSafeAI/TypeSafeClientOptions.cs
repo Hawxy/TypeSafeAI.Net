@@ -27,7 +27,10 @@ public sealed class TypeSafeClientOptions
     /// <summary>The model used when a request does not name one. Defaults to <see cref="DefaultModelName"/>.</summary>
     public string DefaultModel { get; set; } = DefaultModelName;
 
-    /// <summary>Timeout per attempt. Defaults to 10 seconds. Retries each get a fresh timeout.</summary>
+    /// <summary>
+    /// Timeout per attempt, between 10 milliseconds and 24 hours, or <see cref="System.Threading.Timeout.InfiniteTimeSpan"/>.
+    /// Defaults to 10 seconds. Retries each get a fresh timeout.
+    /// </summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(10);
 
     /// <summary>Retries after the initial attempt. Defaults to 2. Set to 0 to disable, for example when using a resilience handler.</summary>
@@ -38,6 +41,9 @@ public sealed class TypeSafeClientOptions
 
     /// <summary>Headers added to every request. Per-request headers take precedence.</summary>
     public IDictionary<string, string> DefaultHeaders { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The clock behind retry delays and per-attempt timeouts. Replace it in tests to avoid real waits.</summary>
+    public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
 
     /// <summary>Creates options populated from the <c>TYPESAFE_*</c> environment variables.</summary>
     public static TypeSafeClientOptions FromEnvironment()
@@ -66,27 +72,6 @@ public sealed class TypeSafeClientOptions
         }
     }
 
-    /// <summary>Copies the options.</summary>
-    public TypeSafeClientOptions Clone()
-    {
-        var clone = new TypeSafeClientOptions
-        {
-            ApiKey = ApiKey,
-            BaseUrl = BaseUrl,
-            DefaultModel = DefaultModel,
-            Timeout = Timeout,
-            MaxRetries = MaxRetries,
-            RetryPolicy = RetryPolicy,
-        };
-
-        foreach (var header in DefaultHeaders)
-        {
-            clone.DefaultHeaders[header.Key] = header.Value;
-        }
-
-        return clone;
-    }
-
     internal void Validate()
     {
         if (string.IsNullOrWhiteSpace(ApiKey))
@@ -105,9 +90,9 @@ public sealed class TypeSafeClientOptions
             throw new TypeSafeException($"{nameof(DefaultModel)} must not be empty.");
         }
 
-        if (Timeout <= TimeSpan.Zero && Timeout != System.Threading.Timeout.InfiniteTimeSpan)
+        if (Timeout != System.Threading.Timeout.InfiniteTimeSpan && (Timeout <= TimeSpan.FromMilliseconds(10) || Timeout >= TimeSpan.FromHours(24)))
         {
-            throw new TypeSafeException($"{nameof(Timeout)} must be positive.");
+            throw new TypeSafeException($"{nameof(Timeout)} must be between 10 milliseconds and 24 hours, or Timeout.InfiniteTimeSpan.");
         }
 
         if (MaxRetries < 0)
@@ -116,5 +101,6 @@ public sealed class TypeSafeClientOptions
         }
 
         ArgumentNullException.ThrowIfNull(RetryPolicy);
+        ArgumentNullException.ThrowIfNull(TimeProvider);
     }
 }

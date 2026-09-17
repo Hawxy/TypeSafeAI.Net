@@ -76,7 +76,7 @@ public class EvaluatorTests
         {
             NoulMetricKinds = { ["grounded"] = NoulMetricKind.Boolean },
             NoulThreshold = 0.3,
-            Model = "jev-1.13.0",
+            RequestOptions = new RequestOptions { Model = "jev-1.13.0" },
             IncludeProbabilities = false,
         };
         var evaluator = new TypeSafeEvaluator(typeSafe, Questions(), options);
@@ -111,7 +111,7 @@ public class EvaluatorTests
         var result = await evaluator.EvaluateAsync(Messages, Response);
 
         await Assert.That(result.Get<NumericMetric>("grounded").Value).IsEqualTo(0.4);
-        await Assert.That(result.Get<NumericMetric>("tone").ContainsDiagnostics(d => d.Message.Contains("no answer"))).IsTrue();
+        await Assert.That(result.Get<StringMetric>("tone").ContainsDiagnostics(d => d.Message.Contains("no answer"))).IsTrue();
     }
 
     [Test]

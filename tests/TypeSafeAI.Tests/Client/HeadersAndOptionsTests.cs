@@ -79,16 +79,4 @@ public class HeadersAndOptionsTests
             using var _ = new TypeSafeClient(new HttpClient(handler), new TypeSafeClientOptions { ApiKey = "k", DefaultModel = "" });
         });
     }
-
-    [Test]
-    public async Task Clone_copies_headers_independently()
-    {
-        var options = new TypeSafeClientOptions { ApiKey = "k" };
-        options.DefaultHeaders["a"] = "1";
-        var clone = options.Clone();
-        clone.DefaultHeaders["b"] = "2";
-
-        await Assert.That(options.DefaultHeaders.ContainsKey("b")).IsFalse();
-        await Assert.That(clone.DefaultHeaders["a"]).IsEqualTo("1");
-    }
 }

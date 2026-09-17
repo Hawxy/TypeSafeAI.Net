@@ -3,7 +3,8 @@ using System.Net;
 namespace TypeSafeAI;
 
 /// <summary>
-/// Decides which failures are retried and how long to wait between attempts.
+/// Decides which failures are retried and how long to wait between attempts. The client feeds these decisions to a Polly
+/// retry strategy, which performs the waits on <see cref="TypeSafeClientOptions.TimeProvider"/>.
 /// Defaults match the official SDKs: exponential backoff from 500 ms to 5 s with 25 % jitter,
 /// retrying 408, 429 and 5xx responses plus connection and timeout failures, honouring <c>Retry-After</c> up to 60 s.
 /// </summary>
@@ -80,10 +81,6 @@ public class RetryPolicy
         return TimeSpan.FromMilliseconds(Math.Max(0, delay * (1 - jitter)));
     }
 
-    /// <summary>Waits for the computed delay. Override in tests to avoid real sleeps.</summary>
-    protected internal virtual Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken) =>
-        delay <= TimeSpan.Zero ? Task.CompletedTask : Task.Delay(delay, cancellationToken);
-
     /// <summary>Returns a value in [0, 1) used for jitter. Override for deterministic tests.</summary>
     protected virtual double NextRandom() => Random.Shared.NextDouble();
 }
@@ -95,12 +92,20 @@ public class RetryPolicy
 /// <param name="Exception">The transport exception when no response was received.</param>
 /// <param name="RetryAfter">The server-requested delay, when present.</param>
 /// <param name="IsTimeout">True when the attempt exceeded the per-attempt timeout.</param>
-/// <param name="IsConnectionFailure">True when the request never got a response.</param>
 public readonly record struct RetryContext(
     int Attempt,
     int MaxRetries,
     HttpStatusCode? StatusCode,
     Exception? Exception,
     TimeSpan? RetryAfter,
-    bool IsTimeout,
-    bool IsConnectionFailure);
+    bool IsTimeout)
+{
+    /// <summary>True when the request never got a response for a reason other than a timeout.</summary>
+    public bool IsConnectionFailure => Exception is not null && !IsTimeout;
+
+    /// <summary>A short description of the failure, for logs.</summary>
+    public override string ToString() =>
+        StatusCode is { } status ? $"status {(int)status}"
+        : IsTimeout ? "timeout"
+        : $"connection failure: {Exception?.Message}";
+}

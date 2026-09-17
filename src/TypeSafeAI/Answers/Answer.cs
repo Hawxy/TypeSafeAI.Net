@@ -7,9 +7,9 @@ namespace TypeSafeAI;
 /// An answer to a question. One of <see cref="NoulAnswer"/>, <see cref="ChoiceAnswer"/>, or <see cref="ScoreAnswer"/>.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(NoulAnswer), "noul")]
-[JsonDerivedType(typeof(ChoiceAnswer), "choice")]
-[JsonDerivedType(typeof(ScoreAnswer), "score")]
+[JsonDerivedType(typeof(NoulAnswer), NoulAnswer.TypeName)]
+[JsonDerivedType(typeof(ChoiceAnswer), ChoiceAnswer.TypeName)]
+[JsonDerivedType(typeof(ScoreAnswer), ScoreAnswer.TypeName)]
 public abstract class Answer
 {
     private protected Answer()
@@ -26,15 +26,15 @@ public abstract class Answer
 
     /// <summary>Casts to a noul answer.</summary>
     /// <exception cref="TypeSafeResponseValidationException">The answer is of a different type.</exception>
-    public NoulAnswer AsNoul() => this as NoulAnswer ?? throw WrongType("noul");
+    public NoulAnswer AsNoul() => this as NoulAnswer ?? throw WrongType(NoulAnswer.TypeName);
 
     /// <summary>Casts to a choice answer.</summary>
     /// <exception cref="TypeSafeResponseValidationException">The answer is of a different type.</exception>
-    public ChoiceAnswer AsChoice() => this as ChoiceAnswer ?? throw WrongType("choice");
+    public ChoiceAnswer AsChoice() => this as ChoiceAnswer ?? throw WrongType(ChoiceAnswer.TypeName);
 
     /// <summary>Casts to a score answer.</summary>
     /// <exception cref="TypeSafeResponseValidationException">The answer is of a different type.</exception>
-    public ScoreAnswer AsScore() => this as ScoreAnswer ?? throw WrongType("score");
+    public ScoreAnswer AsScore() => this as ScoreAnswer ?? throw WrongType(ScoreAnswer.TypeName);
 
     private TypeSafeResponseValidationException WrongType(string expected) =>
         new($"Expected a {expected} answer but the API returned a {Type} answer.");

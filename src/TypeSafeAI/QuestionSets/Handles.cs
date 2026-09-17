@@ -1,94 +1,93 @@
 namespace TypeSafeAI;
 
-/// <summary>Handle for a <see cref="NoulQuestion"/>.</summary>
-public sealed class NoulHandle : IQuestionHandle<NoulAnswer>
+/// <summary>
+/// Base for typed question handles: carries the id and question, checks that an answer is of the matching kind,
+/// then projects it to the handle's result type.
+/// </summary>
+/// <typeparam name="TQuestion">The question type.</typeparam>
+/// <typeparam name="TAnswer">The wire answer type that matches the question.</typeparam>
+/// <typeparam name="TResult">The typed result.</typeparam>
+public abstract class QuestionHandle<TQuestion, TAnswer, TResult> : IQuestionHandle<TResult>
+    where TQuestion : Question
+    where TAnswer : Answer
 {
-    internal NoulHandle(string id, NoulQuestion question)
+    private protected QuestionHandle(ReservedId id, TQuestion question)
     {
-        Id = id;
+        Id = id.Value;
+        HasGeneratedId = id.Generated;
         Question = question;
     }
 
     /// <inheritdoc />
     public string Id { get; }
 
+    /// <inheritdoc />
+    public bool HasGeneratedId { get; }
+
     /// <summary>The question.</summary>
-    public NoulQuestion Question { get; }
+    public TQuestion Question { get; }
 
     Question IQuestionHandle.Question => Question;
 
     /// <inheritdoc />
-    public NoulAnswer Bind(Answer answer)
+    public TResult Bind(Answer answer)
     {
         ArgumentNullException.ThrowIfNull(answer);
-        return answer as NoulAnswer ?? throw HandleErrors.WrongType(Id, "noul", answer);
+        var typed = answer as TAnswer
+            ?? throw new TypeSafeResponseValidationException($"Question '{Id}' expected a {Question.Type} answer but the API returned a {answer.Type} answer.");
+        return Project(typed);
     }
+
+    private protected abstract TResult Project(TAnswer answer);
+
+    private protected TypeSafeResponseValidationException UnknownLabel(string label) =>
+        new($"Question '{Id}' received the label '{label}', which the question did not offer.");
+}
+
+/// <summary>Handle for a <see cref="NoulQuestion"/>.</summary>
+public sealed class NoulHandle : QuestionHandle<NoulQuestion, NoulAnswer, NoulAnswer>
+{
+    internal NoulHandle(ReservedId id, NoulQuestion question)
+        : base(id, question)
+    {
+    }
+
+    private protected override NoulAnswer Project(NoulAnswer answer) => answer;
 }
 
 /// <summary>Handle for a <see cref="ChoiceQuestion"/> with string labels.</summary>
-public sealed class ChoiceHandle : IQuestionHandle<ChoiceAnswer>
+public sealed class ChoiceHandle : QuestionHandle<ChoiceQuestion, ChoiceAnswer, ChoiceAnswer>
 {
-    internal ChoiceHandle(string id, ChoiceQuestion question)
+    internal ChoiceHandle(ReservedId id, ChoiceQuestion question)
+        : base(id, question)
     {
-        Id = id;
-        Question = question;
     }
-
-    /// <inheritdoc />
-    public string Id { get; }
-
-    /// <summary>The question.</summary>
-    public ChoiceQuestion Question { get; }
-
-    Question IQuestionHandle.Question => Question;
 
     /// <summary>The labels offered, in declaration order.</summary>
     public IEnumerable<string> Labels => Question.Labels;
 
-    /// <inheritdoc />
-    public ChoiceAnswer Bind(Answer answer)
-    {
-        ArgumentNullException.ThrowIfNull(answer);
-        var choice = answer as ChoiceAnswer ?? throw HandleErrors.WrongType(Id, "choice", answer);
-        if (!Question.Criteria.ContainsKey(choice.Choice))
-        {
-            throw HandleErrors.UnknownLabel(Id, choice.Choice);
-        }
-
-        return choice;
-    }
+    private protected override ChoiceAnswer Project(ChoiceAnswer answer) =>
+        Question.Criteria.ContainsKey(answer.Choice) ? answer : throw UnknownLabel(answer.Choice);
 }
 
 /// <summary>Handle for a <see cref="ChoiceQuestion"/> whose labels map to an enum.</summary>
-public sealed class ChoiceHandle<TEnum> : IQuestionHandle<ChoiceAnswer<TEnum>>
+public sealed class ChoiceHandle<TEnum> : QuestionHandle<ChoiceQuestion, ChoiceAnswer, ChoiceAnswer<TEnum>>
     where TEnum : struct, Enum
 {
-    internal ChoiceHandle(string id, ChoiceQuestion question)
+    internal ChoiceHandle(ReservedId id, ChoiceQuestion question)
+        : base(id, question)
     {
-        Id = id;
-        Question = question;
     }
 
-    /// <inheritdoc />
-    public string Id { get; }
-
-    /// <summary>The question.</summary>
-    public ChoiceQuestion Question { get; }
-
-    Question IQuestionHandle.Question => Question;
-
-    /// <inheritdoc />
-    public ChoiceAnswer<TEnum> Bind(Answer answer)
+    private protected override ChoiceAnswer<TEnum> Project(ChoiceAnswer answer)
     {
-        ArgumentNullException.ThrowIfNull(answer);
-        var choice = answer as ChoiceAnswer ?? throw HandleErrors.WrongType(Id, "choice", answer);
-        if (!EnumLabels<TEnum>.TryParse(choice.Choice, out var value))
+        if (!EnumLabels<TEnum>.TryParse(answer.Choice, out var value))
         {
-            throw HandleErrors.UnknownLabel(Id, choice.Choice);
+            throw UnknownLabel(answer.Choice);
         }
 
-        var probabilities = new Dictionary<TEnum, double>();
-        foreach (var pair in choice.Probabilities)
+        var probabilities = new Dictionary<TEnum, double>(answer.Probabilities.Count);
+        foreach (var pair in answer.Probabilities)
         {
             if (EnumLabels<TEnum>.TryParse(pair.Key, out var member))
             {
@@ -96,66 +95,39 @@ public sealed class ChoiceHandle<TEnum> : IQuestionHandle<ChoiceAnswer<TEnum>>
             }
         }
 
-        return new ChoiceAnswer<TEnum>(value, choice.Choice, probabilities, choice.Confidence, choice);
+        return new ChoiceAnswer<TEnum>(value, probabilities, answer);
     }
 }
 
 /// <summary>Handle for a <see cref="ScoreQuestion"/> with index-based levels.</summary>
-public sealed class ScoreHandle : IQuestionHandle<ScoreAnswer>
+public sealed class ScoreHandle : QuestionHandle<ScoreQuestion, ScoreAnswer, ScoreAnswer>
 {
-    internal ScoreHandle(string id, ScoreQuestion question)
+    internal ScoreHandle(ReservedId id, ScoreQuestion question)
+        : base(id, question)
     {
-        Id = id;
-        Question = question;
     }
-
-    /// <inheritdoc />
-    public string Id { get; }
-
-    /// <summary>The question.</summary>
-    public ScoreQuestion Question { get; }
-
-    Question IQuestionHandle.Question => Question;
 
     /// <summary>The number of levels on the scale.</summary>
     public int LevelCount => Question.LevelCount;
 
-    /// <inheritdoc />
-    public ScoreAnswer Bind(Answer answer)
-    {
-        ArgumentNullException.ThrowIfNull(answer);
-        return answer as ScoreAnswer ?? throw HandleErrors.WrongType(Id, "score", answer);
-    }
+    private protected override ScoreAnswer Project(ScoreAnswer answer) => answer;
 }
 
 /// <summary>Handle for a <see cref="ScoreQuestion"/> whose levels map to an enum's members in order.</summary>
-public sealed class ScoreHandle<TEnum> : IQuestionHandle<ScoreAnswer<TEnum>>
+public sealed class ScoreHandle<TEnum> : QuestionHandle<ScoreQuestion, ScoreAnswer, ScoreAnswer<TEnum>>
     where TEnum : struct, Enum
 {
-    internal ScoreHandle(string id, ScoreQuestion question)
+    internal ScoreHandle(ReservedId id, ScoreQuestion question)
+        : base(id, question)
     {
-        Id = id;
-        Question = question;
     }
 
-    /// <inheritdoc />
-    public string Id { get; }
-
-    /// <summary>The question.</summary>
-    public ScoreQuestion Question { get; }
-
-    Question IQuestionHandle.Question => Question;
-
-    /// <inheritdoc />
-    public ScoreAnswer<TEnum> Bind(Answer answer)
+    private protected override ScoreAnswer<TEnum> Project(ScoreAnswer answer)
     {
-        ArgumentNullException.ThrowIfNull(answer);
-        var score = answer as ScoreAnswer ?? throw HandleErrors.WrongType(Id, "score", answer);
         var members = EnumLabels<TEnum>.Members;
-
-        var probabilities = new Dictionary<TEnum, double>();
-        var legend = new Dictionary<TEnum, TypeSafeContent?>();
-        foreach (var level in score.Levels)
+        var probabilities = new Dictionary<TEnum, double>(members.Count);
+        var legend = new Dictionary<TEnum, TypeSafeContent?>(members.Count);
+        foreach (var level in answer.Levels)
         {
             if ((uint)level.Index < (uint)members.Count)
             {
@@ -164,17 +136,11 @@ public sealed class ScoreHandle<TEnum> : IQuestionHandle<ScoreAnswer<TEnum>>
             }
         }
 
-        var nearest = members[Math.Clamp(score.NearestLevel, 0, members.Count - 1)];
-        var mostLikely = members[Math.Clamp(score.MostLikelyLevel, 0, members.Count - 1)];
-        return new ScoreAnswer<TEnum>(score.Score, nearest, mostLikely, probabilities, legend, score.Confidence, score);
+        var nearest = members[Math.Clamp(answer.NearestLevel, 0, members.Count - 1)];
+        var mostLikely = members[Math.Clamp(answer.MostLikelyLevel, 0, members.Count - 1)];
+        return new ScoreAnswer<TEnum>(nearest, mostLikely, probabilities, legend, answer);
     }
 }
 
-internal static class HandleErrors
-{
-    public static TypeSafeResponseValidationException WrongType(string id, string expected, Answer answer) =>
-        new($"Question '{id}' expected a {expected} answer but the API returned a {answer.Type} answer.");
-
-    public static TypeSafeResponseValidationException UnknownLabel(string id, string label) =>
-        new($"Question '{id}' received the label '{label}', which the question did not offer.");
-}
+/// <summary>A question id reserved in a <see cref="QuestionSet"/>, recording whether the set generated it.</summary>
+public readonly record struct ReservedId(string Value, bool Generated);

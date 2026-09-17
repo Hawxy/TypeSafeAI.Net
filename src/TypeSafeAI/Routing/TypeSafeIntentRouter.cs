@@ -1,4 +1,4 @@
-namespace TypeSafeAI.Extensions.AI;
+namespace TypeSafeAI;
 
 /// <summary>Where an intent router sends a request.</summary>
 public enum RouteTarget
@@ -103,19 +103,11 @@ public sealed class TypeSafeIntentRouter<TIntent>
         var intent = result.Get(_intent);
         var complexity = _complexity is null ? null : result.Get(_complexity);
 
-        RouteTarget target;
-        if (intent.Confidence < ConfidenceFloor)
-        {
-            target = RouteTarget.Human;
-        }
-        else if (complexity is not null && (complexity.Score > ComplexityCeiling || complexity.Confidence < ComplexityConfidenceFloor))
-        {
-            target = RouteTarget.Human;
-        }
-        else
-        {
-            target = CodeIntents.Contains(intent.Choice) ? RouteTarget.Code : RouteTarget.Model;
-        }
+        var unclear = intent.Confidence < ConfidenceFloor
+            || (complexity is not null && (complexity.Score > ComplexityCeiling || complexity.Confidence < ComplexityConfidenceFloor));
+        var target = unclear ? RouteTarget.Human
+            : CodeIntents.Contains(intent.Choice) ? RouteTarget.Code
+            : RouteTarget.Model;
 
         return new IntentRoute<TIntent>(intent, complexity, target, result);
     }

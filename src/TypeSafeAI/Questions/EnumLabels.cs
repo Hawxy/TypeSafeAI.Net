@@ -73,18 +73,7 @@ public static class EnumLabels<TEnum>
     public static TypeSafeContent?[] ToScoreCriteria() =>
         Entries.Select(e => (TypeSafeContent?)TypeSafeContent.FromText(e.Description ?? e.Label)).ToArray();
 
-    private static Entry Find(TEnum value)
-    {
-        foreach (var entry in Entries)
-        {
-            if (EqualityComparer<TEnum>.Default.Equals(entry.Value, value))
-            {
-                return entry;
-            }
-        }
-
-        throw new ArgumentOutOfRangeException(nameof(value), value, $"{value} is not a declared member of {typeof(TEnum).Name}.");
-    }
+    private static Entry Find(TEnum value) => Entries[IndexOf(value)];
 
     // The trimmer keeps every field of an enum type once the type is used, so reading label attributes off the fields is safe.
     [UnconditionalSuppressMessage("Trimming", "IL2090", Justification = "The trimmer preserves all fields of enum types, including their custom attributes.")]

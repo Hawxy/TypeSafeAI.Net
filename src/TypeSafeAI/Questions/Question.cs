@@ -6,9 +6,9 @@ namespace TypeSafeAI;
 /// A judgment to ask about a state. One of <see cref="NoulQuestion"/>, <see cref="ChoiceQuestion"/>, or <see cref="ScoreQuestion"/>.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(NoulQuestion), "noul")]
-[JsonDerivedType(typeof(ChoiceQuestion), "choice")]
-[JsonDerivedType(typeof(ScoreQuestion), "score")]
+[JsonDerivedType(typeof(NoulQuestion), NoulQuestion.TypeName)]
+[JsonDerivedType(typeof(ChoiceQuestion), ChoiceQuestion.TypeName)]
+[JsonDerivedType(typeof(ScoreQuestion), ScoreQuestion.TypeName)]
 public abstract class Question
 {
     private protected Question(TypeSafeContent? instructions)
@@ -37,14 +37,7 @@ public abstract class Question
         new(instructions, criteria);
 
     /// <summary>Creates a pick-one question over plain labels with no descriptions.</summary>
-    public static ChoiceQuestion Choice(TypeSafeContent? instructions, params string[] labels)
-    {
-        ArgumentNullException.ThrowIfNull(labels);
-        return new ChoiceQuestion(instructions, ChoiceQuestion.CriteriaFromLabels(labels));
-    }
-
-    /// <summary>Creates a pick-one question over plain labels with no descriptions.</summary>
-    public static ChoiceQuestion Choice(TypeSafeContent? instructions, IEnumerable<string> labels)
+    public static ChoiceQuestion Choice(TypeSafeContent? instructions, params IEnumerable<string> labels)
     {
         ArgumentNullException.ThrowIfNull(labels);
         return new ChoiceQuestion(instructions, ChoiceQuestion.CriteriaFromLabels(labels));

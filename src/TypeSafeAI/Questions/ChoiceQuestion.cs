@@ -27,9 +27,12 @@ public sealed class ChoiceQuestion : Question
         Criteria = criteria;
     }
 
+    /// <summary>The wire name of this question type.</summary>
+    public const string TypeName = "choice";
+
     /// <inheritdoc />
     [JsonIgnore]
-    public override string Type => "choice";
+    public override string Type => TypeName;
 
     /// <summary>The labels to choose from, each with an optional description.</summary>
     [JsonPropertyName("criteria")]

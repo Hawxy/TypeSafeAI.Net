@@ -13,9 +13,12 @@ public sealed class NoulQuestion : Question
         Criteria = criteria;
     }
 
+    /// <summary>The wire name of this question type.</summary>
+    public const string TypeName = "noul";
+
     /// <inheritdoc />
     [JsonIgnore]
-    public override string Type => "noul";
+    public override string Type => TypeName;
 
     /// <summary>Optional clarification of what yes and no mean.</summary>
     [JsonPropertyName("criteria")]

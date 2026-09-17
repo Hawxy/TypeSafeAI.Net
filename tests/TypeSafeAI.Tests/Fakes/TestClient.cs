@@ -12,6 +12,8 @@ public static class TestClient
         {
             ApiKey = "test-key",
             RetryPolicy = policy ?? new RecordingRetryPolicy(),
+            Timeout = Timeout.InfiniteTimeSpan,
+            TimeProvider = InstantTimeProvider.Instance,
         };
         configure?.Invoke(options);
         return new TypeSafeClient(new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan }, options);

@@ -36,20 +36,12 @@ public static class GuardrailPolicies
             foreach (var hazard in hazards)
             {
                 var probability = assessment.Get(hazard.Key).Probability;
-                GuardrailAction action;
-                if (probability >= actionThreshold)
-                {
-                    action = hazard.Value;
-                }
-                else if (probability >= reviewThreshold)
-                {
-                    action = GuardrailAction.Review;
-                }
-                else
+                if (probability < reviewThreshold)
                 {
                     continue;
                 }
 
+                var action = probability >= actionThreshold ? hazard.Value : GuardrailAction.Review;
                 if (action == GuardrailAction.Review && severe)
                 {
                     action = GuardrailAction.Block;

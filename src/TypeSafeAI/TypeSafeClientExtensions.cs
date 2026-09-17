@@ -31,7 +31,7 @@ public static class TypeSafeClientExtensions
 
     /// <summary>
     /// Evaluates many states against the same <see cref="QuestionSet"/>, one request per state, in parallel.
-    /// Results are returned in input order. A failure for any state fails the whole call.
+    /// Results are returned in input order. A failure for any state fails the whole call and stops scheduling the rest.
     /// </summary>
     /// <param name="client">The client.</param>
     /// <param name="states">The states to judge.</param>
@@ -53,31 +53,13 @@ public static class TypeSafeClientExtensions
         ArgumentOutOfRangeException.ThrowIfLessThan(maxConcurrency, 1);
 
         var items = states as IReadOnlyList<TypeSafeContent> ?? states.ToArray();
-        if (items.Count == 0)
+        var results = new QuestionSetResult[items.Count];
+        var parallel = new ParallelOptions { MaxDegreeOfParallelism = maxConcurrency, CancellationToken = cancellationToken };
+        await Parallel.ForAsync(0, items.Count, parallel, async (i, ct) =>
         {
-            return [];
-        }
+            results[i] = await client.SystemOneAsync(items[i], questions, options, ct).ConfigureAwait(false);
+        }).ConfigureAwait(false);
 
-        using var gate = new SemaphoreSlim(maxConcurrency, maxConcurrency);
-        var tasks = new Task<QuestionSetResult>[items.Count];
-        for (var i = 0; i < items.Count; i++)
-        {
-            tasks[i] = RunAsync(items[i]);
-        }
-
-        return await Task.WhenAll(tasks).ConfigureAwait(false);
-
-        async Task<QuestionSetResult> RunAsync(TypeSafeContent state)
-        {
-            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                return await client.SystemOneAsync(state, questions, options, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                gate.Release();
-            }
-        }
+        return results;
     }
 }

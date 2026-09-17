@@ -2,17 +2,10 @@ using TypeSafeAI.Json;
 
 namespace TypeSafeAI;
 
-/// <summary>The models endpoint.</summary>
-public sealed class ModelsResource : IModelsResource
+internal sealed class ModelsResource(HttpPipeline pipeline) : IModelsResource
 {
-    private readonly HttpPipeline _pipeline;
+    private readonly Uri _uri = pipeline.Resolve("/v1/models");
 
-    internal ModelsResource(HttpPipeline pipeline)
-    {
-        _pipeline = pipeline;
-    }
-
-    /// <inheritdoc />
     public Task<ModelsResponse> ListAsync(RequestOptions? options = null, CancellationToken cancellationToken = default) =>
-        _pipeline.SendAsync(HttpMethod.Get, "/v1/models", null, TypeSafeJsonContext.Default.ModelsResponse, options, cancellationToken);
+        pipeline.SendAsync(HttpMethod.Get, _uri, null, TypeSafeJsonContext.Default.ModelsResponse, options, cancellationToken);
 }

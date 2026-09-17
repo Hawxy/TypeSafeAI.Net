@@ -23,20 +23,27 @@ public static class TypeSafeServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var builder = services.AddOptions<TypeSafeClientOptions>().Configure(o => o.ApplyEnvironment());
-        if (configure is not null)
+        services.AddOptions<TypeSafeClientOptions>().Configure(options =>
         {
-            builder.Configure(configure);
-        }
+            options.ApplyEnvironment();
+            configure?.Invoke(options);
+        });
+        services.TryAddTransient<ITypeSafeClient>(sp => sp.GetRequiredService<TypeSafeClient>());
 
-        return services.AddTypeSafeClientCore();
+        // Per-attempt timeouts are enforced by the SDK; the HttpClient must not cut retries short.
+        return services
+            .AddHttpClient<TypeSafeClient>(HttpClientName, http => http.Timeout = Timeout.InfiniteTimeSpan)
+            .AddTypedClient((http, sp) => new TypeSafeClient(
+                http,
+                sp.GetRequiredService<IOptions<TypeSafeClientOptions>>().Value,
+                sp.GetService<ILogger<TypeSafeClient>>()));
     }
 
     /// <summary>Registers the client with an explicit API key.</summary>
     public static IHttpClientBuilder AddTypeSafeClient(this IServiceCollection services, string apiKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
-        return services.AddTypeSafeClient(o => o.ApiKey = apiKey);
+        return services.AddTypeSafeClient(options => options.ApiKey = apiKey);
     }
 
     /// <summary>
@@ -45,35 +52,11 @@ public static class TypeSafeServiceCollectionExtensions
     /// </summary>
     public static IHttpClientBuilder AddTypeSafeClient(this IServiceCollection services, IConfiguration configuration, Action<TypeSafeClientOptions>? configure = null)
     {
-        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-
-        var builder = services.AddOptions<TypeSafeClientOptions>()
-            .Configure(o => o.ApplyEnvironment())
-            .Configure(o => configuration.Bind(o));
-        if (configure is not null)
+        return services.AddTypeSafeClient(options =>
         {
-            builder.Configure(configure);
-        }
-
-        return services.AddTypeSafeClientCore();
-    }
-
-    private static IHttpClientBuilder AddTypeSafeClientCore(this IServiceCollection services)
-    {
-        services.TryAddTransient<ITypeSafeClient>(sp => sp.GetRequiredService<TypeSafeClient>());
-
-        return services
-            .AddHttpClient<TypeSafeClient>(HttpClientName, (sp, http) =>
-            {
-                // Per-attempt timeouts are enforced by the SDK; the HttpClient must not cut retries short.
-                var options = sp.GetRequiredService<IOptions<TypeSafeClientOptions>>().Value;
-                http.Timeout = Timeout.InfiniteTimeSpan;
-                http.BaseAddress = options.BaseUrl;
-            })
-            .AddTypedClient((http, sp) => new TypeSafeClient(
-                http,
-                sp.GetRequiredService<IOptions<TypeSafeClientOptions>>(),
-                sp.GetService<ILogger<TypeSafeClient>>()));
+            configuration.Bind(options);
+            configure?.Invoke(options);
+        });
     }
 }

@@ -29,7 +29,7 @@ public readonly struct TypeSafeContent : IEquatable<TypeSafeContent>
     /// <summary>True when the content is plain text.</summary>
     public bool IsText => Text is not null;
 
-    /// <summary>True when the content is a JSON object or array.</summary>
+    /// <summary>True when the content is JSON.</summary>
     public bool IsJson => Node is not null;
 
     /// <summary>True when the content carries neither text nor JSON.</summary>
@@ -42,38 +42,24 @@ public readonly struct TypeSafeContent : IEquatable<TypeSafeContent>
         return new TypeSafeContent(text, null);
     }
 
-    /// <summary>Creates JSON content from a node. The node is used as-is and must not be attached to another parent.</summary>
+    /// <summary>
+    /// Creates content from a node. A JSON string becomes text; anything else is used as-is and must not be attached to another parent.
+    /// </summary>
     public static TypeSafeContent FromNode(JsonNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
-        return new TypeSafeContent(null, node);
+        return FromParsed(node);
     }
 
-    /// <summary>Creates JSON content from an element by cloning it into a node.</summary>
-    public static TypeSafeContent FromElement(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.String)
-        {
-            return FromText(element.GetString()!);
-        }
+    /// <summary>Creates content from an element by cloning it into a node.</summary>
+    public static TypeSafeContent FromElement(JsonElement element) =>
+        FromParsed(JsonSerializer.SerializeToNode(element, TypeSafeJsonContext.Default.JsonElement));
 
-        var node = JsonNode.Parse(element.GetRawText());
-        return node is null ? default : new TypeSafeContent(null, node);
-    }
-
-    /// <summary>Creates JSON content by parsing raw JSON text.</summary>
+    /// <summary>Creates content by parsing raw JSON text.</summary>
     public static TypeSafeContent FromJson(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
-        var node = JsonNode.Parse(json);
-        if (node is null)
-        {
-            return default;
-        }
-
-        return node is JsonValue value && value.TryGetValue<string>(out var text)
-            ? FromText(text)
-            : new TypeSafeContent(null, node);
+        return FromParsed(JsonNode.Parse(json));
     }
 
     /// <summary>Creates a JSON array of strings, the shape the API expects for sequences of messages or records.</summary>
@@ -93,8 +79,7 @@ public readonly struct TypeSafeContent : IEquatable<TypeSafeContent>
     public static TypeSafeContent FromObject<T>(T value, JsonTypeInfo<T> typeInfo)
     {
         ArgumentNullException.ThrowIfNull(typeInfo);
-        var node = JsonSerializer.SerializeToNode(value, typeInfo);
-        return node is null ? default : new TypeSafeContent(null, node);
+        return FromParsed(JsonSerializer.SerializeToNode(value, typeInfo));
     }
 
     /// <summary>Serializes a value to JSON content using reflection-based serialization.</summary>
@@ -102,9 +87,16 @@ public readonly struct TypeSafeContent : IEquatable<TypeSafeContent>
     [RequiresDynamicCode("Reflection-based serialization may require runtime code generation. Use the JsonTypeInfo overload instead.")]
     public static TypeSafeContent FromObject<T>(T value, JsonSerializerOptions? options = null)
     {
-        var node = JsonSerializer.SerializeToNode(value, options ?? TypeSafeJsonDefaults.ContentSerializerOptions);
-        return node is null ? default : new TypeSafeContent(null, node);
+        return FromParsed(JsonSerializer.SerializeToNode(value, options ?? TypeSafeJsonDefaults.ContentSerializerOptions));
     }
+
+    // Every JSON entry point lands here so a string value is always text and equality matches the wire form.
+    private static TypeSafeContent FromParsed(JsonNode? node) => node switch
+    {
+        null => default,
+        JsonValue value when value.TryGetValue<string>(out var text) => new TypeSafeContent(text, null),
+        _ => new TypeSafeContent(null, node),
+    };
 
     /// <summary>Implicitly converts text to content.</summary>
     public static implicit operator TypeSafeContent(string text) => FromText(text);

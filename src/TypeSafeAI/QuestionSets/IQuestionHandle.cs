@@ -6,6 +6,9 @@ public interface IQuestionHandle
     /// <summary>The question id used as the key in the request and response.</summary>
     string Id { get; }
 
+    /// <summary>True when the set generated the id rather than the caller supplying one.</summary>
+    bool HasGeneratedId { get; }
+
     /// <summary>The question.</summary>
     Question Question { get; }
 }

@@ -5,12 +5,10 @@ namespace TypeSafeAI;
 public sealed class ChoiceAnswer<TEnum>
     where TEnum : struct, Enum
 {
-    internal ChoiceAnswer(TEnum choice, string label, IReadOnlyDictionary<TEnum, double> probabilities, double confidence, ChoiceAnswer raw)
+    internal ChoiceAnswer(TEnum choice, IReadOnlyDictionary<TEnum, double> probabilities, ChoiceAnswer raw)
     {
         Choice = choice;
-        Label = label;
         Probabilities = probabilities;
-        Confidence = confidence;
         Raw = raw;
     }
 
@@ -18,19 +16,19 @@ public sealed class ChoiceAnswer<TEnum>
     public TEnum Choice { get; }
 
     /// <summary>The wire label of <see cref="Choice"/>.</summary>
-    public string Label { get; }
+    public string Label => Raw.Choice;
 
     /// <summary>Probability per option.</summary>
     public IReadOnlyDictionary<TEnum, double> Probabilities { get; }
 
     /// <summary>How concentrated the distribution is, from 0 to 1.</summary>
-    public double Confidence { get; }
+    public double Confidence => Raw.Confidence;
 
     /// <summary>The untyped answer.</summary>
     public ChoiceAnswer Raw { get; }
 
     /// <summary>Gets the probability of an option, or 0 when it was not returned.</summary>
-    public double ProbabilityOf(TEnum option) => Probabilities.TryGetValue(option, out var p) ? p : 0;
+    public double ProbabilityOf(TEnum option) => Probabilities.GetValueOrDefault(option);
 
     /// <summary>The options ordered from most to least likely.</summary>
     public IEnumerable<KeyValuePair<TEnum, double>> Ranked() => Probabilities.OrderByDescending(p => p.Value);
@@ -45,25 +43,21 @@ public sealed class ScoreAnswer<TEnum>
     where TEnum : struct, Enum
 {
     internal ScoreAnswer(
-        double score,
         TEnum nearest,
         TEnum mostLikely,
         IReadOnlyDictionary<TEnum, double> probabilities,
         IReadOnlyDictionary<TEnum, TypeSafeContent?> legend,
-        double confidence,
         ScoreAnswer raw)
     {
-        Score = score;
         Nearest = nearest;
         MostLikely = mostLikely;
         Probabilities = probabilities;
         Legend = legend;
-        Confidence = confidence;
         Raw = raw;
     }
 
     /// <summary>The probability-weighted level on the index scale, where 0 is the first enum member.</summary>
-    public double Score { get; }
+    public double Score => Raw.Score;
 
     /// <summary>The level closest to <see cref="Score"/>.</summary>
     public TEnum Nearest { get; }
@@ -78,13 +72,13 @@ public sealed class ScoreAnswer<TEnum>
     public IReadOnlyDictionary<TEnum, TypeSafeContent?> Legend { get; }
 
     /// <summary>How concentrated the distribution is, from 0 to 1.</summary>
-    public double Confidence { get; }
+    public double Confidence => Raw.Confidence;
 
     /// <summary>The untyped answer.</summary>
     public ScoreAnswer Raw { get; }
 
     /// <summary>Gets the probability of a level, or 0 when it was not returned.</summary>
-    public double ProbabilityOf(TEnum level) => Probabilities.TryGetValue(level, out var p) ? p : 0;
+    public double ProbabilityOf(TEnum level) => Probabilities.GetValueOrDefault(level);
 
     /// <summary>True when <see cref="Score"/> is at or above the given level's index.</summary>
     public bool IsAtLeast(TEnum level) => Score >= EnumLabels<TEnum>.IndexOf(level);

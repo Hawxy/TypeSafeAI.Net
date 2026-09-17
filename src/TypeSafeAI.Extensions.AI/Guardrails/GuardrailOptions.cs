@@ -32,10 +32,10 @@ public sealed class GuardrailOptions
     /// </summary>
     public bool GuardStreamingOutput { get; set; }
 
-    /// <summary>Builds the input state. Defaults to <see cref="ChatState.FromMessages(IEnumerable{ChatMessage}, ChatResponse?)"/>.</summary>
+    /// <summary>Builds the input state. Defaults to <see cref="ChatState.FromMessages"/>.</summary>
     public Func<IReadOnlyList<ChatMessage>, TypeSafeContent>? InputStateBuilder { get; set; }
 
-    /// <summary>Builds the output state. Defaults to <see cref="ChatState.FromMessages(IEnumerable{ChatMessage}, ChatResponse?)"/> with the response.</summary>
+    /// <summary>Builds the output state. Defaults to <see cref="ChatState.FromMessages"/> with the response.</summary>
     public Func<IReadOnlyList<ChatMessage>, ChatResponse, TypeSafeContent>? OutputStateBuilder { get; set; }
 
     /// <summary>Per-request overrides for the TypeSafe calls.</summary>

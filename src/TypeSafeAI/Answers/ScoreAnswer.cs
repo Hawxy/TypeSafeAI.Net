@@ -5,9 +5,15 @@ namespace TypeSafeAI;
 /// <summary>The answer to a <see cref="ScoreQuestion"/>: the expected level and the distribution over levels.</summary>
 public sealed class ScoreAnswer : Answer
 {
+    /// <summary>The wire name of this answer type.</summary>
+    public const string TypeName = "score";
+
+    private ScoreLevel[]? _levels;
+    private int? _mostLikelyLevel;
+
     /// <inheritdoc />
     [JsonIgnore]
-    public override string Type => "score";
+    public override string Type => TypeName;
 
     /// <summary>The probability-weighted level. May fall between the integer levels.</summary>
     [JsonPropertyName("score")]
@@ -27,9 +33,7 @@ public sealed class ScoreAnswer : Answer
 
     /// <summary>The level index with the highest probability.</summary>
     [JsonIgnore]
-    public int MostLikelyLevel => Probabilities.Count == 0
-        ? NearestLevel
-        : Probabilities.OrderByDescending(p => p.Value).ThenBy(p => p.Key).First().Key;
+    public int MostLikelyLevel => _mostLikelyLevel ??= FindMostLikelyLevel();
 
     /// <summary>The level index closest to <see cref="Score"/>.</summary>
     [JsonIgnore]
@@ -37,19 +41,46 @@ public sealed class ScoreAnswer : Answer
 
     /// <summary>The levels in index order with their description and probability.</summary>
     [JsonIgnore]
-    public IReadOnlyList<ScoreLevel> Levels
-    {
-        get
-        {
-            var indices = Legend.Keys.Union(Probabilities.Keys).OrderBy(i => i);
-            return indices
-                .Select(i => new ScoreLevel(i, Legend.TryGetValue(i, out var d) ? d : null, Probabilities.TryGetValue(i, out var p) ? p : 0))
-                .ToArray();
-        }
-    }
+    public IReadOnlyList<ScoreLevel> Levels => _levels ??= BuildLevels();
 
     /// <summary>Gets the probability of a level index, or 0 when the level does not exist.</summary>
-    public double ProbabilityOf(int level) => Probabilities.TryGetValue(level, out var p) ? p : 0;
+    public double ProbabilityOf(int level) => Probabilities.GetValueOrDefault(level);
+
+    private int FindMostLikelyLevel()
+    {
+        if (Probabilities.Count == 0)
+        {
+            return NearestLevel;
+        }
+
+        var best = int.MaxValue;
+        var bestProbability = double.NegativeInfinity;
+        foreach (var (index, probability) in Probabilities)
+        {
+            if (probability > bestProbability || (probability == bestProbability && index < best))
+            {
+                best = index;
+                bestProbability = probability;
+            }
+        }
+
+        return best;
+    }
+
+    private ScoreLevel[] BuildLevels()
+    {
+        var indices = new SortedSet<int>(Legend.Keys);
+        indices.UnionWith(Probabilities.Keys);
+
+        var levels = new ScoreLevel[indices.Count];
+        var i = 0;
+        foreach (var index in indices)
+        {
+            levels[i++] = new ScoreLevel(index, Legend.GetValueOrDefault(index), Probabilities.GetValueOrDefault(index));
+        }
+
+        return levels;
+    }
 }
 
 /// <summary>One level of a score scale with its probability.</summary>

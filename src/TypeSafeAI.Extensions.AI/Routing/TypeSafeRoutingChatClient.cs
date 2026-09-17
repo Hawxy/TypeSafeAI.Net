@@ -1,5 +1,6 @@
 #pragma warning disable MEAI001 // RoutingChatClient and RoutingContext are experimental in Microsoft.Extensions.AI.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.AI;
 
 namespace TypeSafeAI.Extensions.AI;
@@ -23,7 +24,8 @@ public sealed class TypeSafeRoutingContext
     /// <summary>The chat options for this call. This is the clone the selected client receives, so changes here shape the request.</summary>
     public ChatOptions? Options => Routing.ChatOptions;
 
-    /// <summary>The underlying Microsoft.Extensions.AI routing context. Experimental in Microsoft.Extensions.AI.</summary>
+    /// <summary>The underlying Microsoft.Extensions.AI routing context.</summary>
+    [Experimental("MEAI001")]
     public RoutingContext Routing { get; }
 
     /// <summary>The client used when the selector returns <see langword="null"/>.</summary>
@@ -36,7 +38,7 @@ public sealed class TypeSafeRoutingContext
 /// <summary>Configures <see cref="TypeSafeRoutingChatClient"/>.</summary>
 public sealed class RoutingOptions
 {
-    /// <summary>Builds the state judged for routing. Defaults to <see cref="ChatState.FromMessages(IEnumerable{ChatMessage}, ChatResponse?)"/>.</summary>
+    /// <summary>Builds the state judged for routing. Defaults to <see cref="ChatState.FromMessages"/>.</summary>
     public Func<IReadOnlyList<ChatMessage>, TypeSafeContent>? StateBuilder { get; set; }
 
     /// <summary>Per-request overrides for the TypeSafe call.</summary>
@@ -77,13 +79,9 @@ public sealed class TypeSafeRoutingChatClient : RoutingChatClient
         RoutingOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(typeSafeClient);
-        ArgumentNullException.ThrowIfNull(questions);
+        Internal.RequireQuestions(questions, nameof(questions));
         ArgumentNullException.ThrowIfNull(select);
         ArgumentNullException.ThrowIfNull(defaultClient);
-        if (questions.Count == 0)
-        {
-            throw new ArgumentException("At least one routing question is required.", nameof(questions));
-        }
 
         _typeSafe = typeSafeClient;
         _questions = questions;
@@ -96,7 +94,7 @@ public sealed class TypeSafeRoutingChatClient : RoutingChatClient
     protected override async ValueTask<IChatClient> SelectClientAsync(RoutingContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var conversation = context.Messages as IReadOnlyList<ChatMessage> ?? context.Messages.ToList();
+        var conversation = context.Messages.AsReadOnlyList();
         var state = _options.StateBuilder?.Invoke(conversation) ?? ChatState.FromMessages(conversation);
         var result = await _typeSafe.SystemOneAsync(state, _questions, _options.RequestOptions, cancellationToken).ConfigureAwait(false);
         var target = _select(new TypeSafeRoutingContext(result, context, _defaultClient)) ?? _defaultClient;

@@ -19,9 +19,12 @@ public sealed class ScoreQuestion : Question
         Criteria = criteria;
     }
 
+    /// <summary>The wire name of this question type.</summary>
+    public const string TypeName = "score";
+
     /// <inheritdoc />
     [JsonIgnore]
-    public override string Type => "score";
+    public override string Type => TypeName;
 
     /// <summary>The level descriptions, lowest first.</summary>
     [JsonPropertyName("criteria")]
