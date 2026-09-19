@@ -1,5 +1,11 @@
 # TypeSafeAI for .NET
 
+[![Build & Test](https://github.com/Hawxy/TypeSafeAI.Net/actions/workflows/Build_%26_Test.yml/badge.svg)](https://github.com/Hawxy/TypeSafeAI.Net/actions/workflows/Build_%26_Test.yml)
+[![TypeSafeAI](https://img.shields.io/nuget/v/TypeSafeAI.svg?label=TypeSafeAI&logo=nuget)](https://www.nuget.org/packages/TypeSafeAI)
+[![TypeSafeAI.Extensions.AI](https://img.shields.io/nuget/v/TypeSafeAI.Extensions.AI.svg?label=TypeSafeAI.Extensions.AI&logo=nuget)](https://www.nuget.org/packages/TypeSafeAI.Extensions.AI)
+[![Downloads](https://img.shields.io/nuget/dt/TypeSafeAI.svg?logo=nuget)](https://www.nuget.org/packages/TypeSafeAI)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 A .NET SDK for the [TypeSafe AI](https://docs.typesafe.ai) System One API. Ask small, typed judgments about text or structured state and get calibrated probabilities back that your code can act on:
 
 - **Noul**: is this true? Returns the probability of yes.
