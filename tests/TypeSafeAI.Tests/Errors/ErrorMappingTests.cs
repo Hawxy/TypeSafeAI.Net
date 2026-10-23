@@ -10,6 +10,7 @@ public class ErrorMappingTests
     [Arguments(401, typeof(TypeSafeAuthenticationException))]
     [Arguments(403, typeof(TypeSafePermissionDeniedException))]
     [Arguments(404, typeof(TypeSafeNotFoundException))]
+    [Arguments(413, typeof(TypeSafeRequestTooLargeException))]
     [Arguments(422, typeof(TypeSafeUnprocessableEntityException))]
     [Arguments(429, typeof(TypeSafeRateLimitException))]
     [Arguments(500, typeof(TypeSafeInternalServerException))]

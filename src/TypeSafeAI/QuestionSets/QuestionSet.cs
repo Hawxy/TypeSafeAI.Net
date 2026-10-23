@@ -86,6 +86,10 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
         where TEnum : struct, Enum =>
         Add<TEnum>(id, Question.Score<TEnum>(instructions));
 
+    /// <summary>Adds a question that locates what the instructions describe in an image.</summary>
+    public BoxHandle Box(TypeSafeContent? instructions, string? id = null) =>
+        Add(id, Question.Box(instructions));
+
     /// <summary>Adds a prepared noul question.</summary>
     public NoulHandle Add(string? id, NoulQuestion question) => Register(new NoulHandle(Reserve(id), Check(question)));
 
@@ -126,6 +130,9 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
         return Register(new ScoreHandle<TEnum>(Reserve(id), question));
     }
 
+    /// <summary>Adds a prepared box question.</summary>
+    public BoxHandle Add(string? id, BoxQuestion question) => Register(new BoxHandle(Reserve(id), Check(question)));
+
     /// <summary>Adds any question without a typed handle. Read its answer through <see cref="QuestionSetResult.this[string]"/>.</summary>
     public IQuestionHandle Add(string id, Question question)
     {
@@ -135,6 +142,7 @@ public sealed class QuestionSet : IReadOnlyDictionary<string, Question>
             NoulQuestion noul => Add(id, noul),
             ChoiceQuestion choice => Add(id, choice),
             ScoreQuestion score => Add(id, score),
+            BoxQuestion box => Add(id, box),
             _ => throw new ArgumentException($"Unsupported question type {question.GetType().Name}.", nameof(question)),
         };
     }

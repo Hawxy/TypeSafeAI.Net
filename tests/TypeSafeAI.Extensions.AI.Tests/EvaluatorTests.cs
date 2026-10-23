@@ -69,6 +69,23 @@ public class EvaluatorTests
     }
 
     [Test]
+    public async Task Box_answers_become_string_metrics_with_edges_in_metadata()
+    {
+        var typeSafe = FakeTypeSafeClient.Answering(("mug", FakeTypeSafeClient.Box(0.25, 0.82, 0.44, 0.84, 0.9)));
+        var questions = new QuestionSet();
+        questions.Box("the mug in the response image", id: "mug");
+        var evaluator = new TypeSafeEvaluator(typeSafe, questions);
+
+        var result = await evaluator.EvaluateAsync(Messages, Response);
+
+        var mug = result.Get<StringMetric>("mug");
+        await Assert.That(mug.Value).IsEqualTo("top=0.25 left=0.44 bottom=0.82 right=0.84");
+        await Assert.That(mug.Metadata!["typesafe.box.right"]).IsEqualTo("0.84");
+        await Assert.That(mug.Metadata["typesafe.confidence"]).IsEqualTo("0.9");
+        await Assert.That(mug.Diagnostics is null || mug.Diagnostics.Count == 0).IsTrue();
+    }
+
+    [Test]
     public async Task Boolean_noul_metrics_use_the_threshold_and_model_override_flows_to_request_options()
     {
         var typeSafe = FakeTypeSafeClient.Answering(("grounded", FakeTypeSafeClient.Noul(0.4)), ("tone", FakeTypeSafeClient.Choice("rude", 0.9, ("rude", 0.9))), ("completeness", FakeTypeSafeClient.Score(0.5, 0.5, 0.5, 0.5, 0)));

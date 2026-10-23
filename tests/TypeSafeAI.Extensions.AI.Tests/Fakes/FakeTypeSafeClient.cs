@@ -50,4 +50,10 @@ public sealed class FakeTypeSafeClient : ITypeSafeClient
         Probabilities = probabilities.Select((p, i) => (i, p)).ToDictionary(x => x.i, x => x.p),
         Legend = probabilities.Select((_, i) => i).ToDictionary(i => i, i => (TypeSafeContent?)TypeSafeContent.FromText("level " + i)),
     };
+
+    public static BoxAnswer Box(double top, double bottom, double left, double right, double? confidence) => new()
+    {
+        Box = new BoxCoordinates { Top = top, Bottom = bottom, Left = left, Right = right },
+        Confidence = confidence,
+    };
 }

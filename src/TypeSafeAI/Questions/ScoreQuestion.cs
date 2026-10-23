@@ -34,4 +34,13 @@ public sealed class ScoreQuestion : Question
     /// <summary>The number of levels on the scale.</summary>
     [JsonIgnore]
     public int LevelCount => Criteria.Count;
+
+    internal override void CollectAssets(AssetCollector assets)
+    {
+        assets.Add(Instructions);
+        foreach (var level in Criteria)
+        {
+            assets.Add(level);
+        }
+    }
 }

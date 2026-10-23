@@ -17,6 +17,9 @@ public sealed class RequestOptions
     /// <summary>Retry policy for this request.</summary>
     public RetryPolicy? RetryPolicy { get; set; }
 
+    /// <summary>Whether this request uses long context. Overrides <see cref="TypeSafeClientOptions.LongContext"/>.</summary>
+    public bool? LongContext { get; set; }
+
     /// <summary>Headers merged over the client's default headers.</summary>
     public IDictionary<string, string>? ExtraHeaders { get; set; }
 

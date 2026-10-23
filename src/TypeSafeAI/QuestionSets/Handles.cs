@@ -142,5 +142,16 @@ public sealed class ScoreHandle<TEnum> : QuestionHandle<ScoreQuestion, ScoreAnsw
     }
 }
 
+/// <summary>Handle for a <see cref="BoxQuestion"/>.</summary>
+public sealed class BoxHandle : QuestionHandle<BoxQuestion, BoxAnswer, BoxAnswer>
+{
+    internal BoxHandle(ReservedId id, BoxQuestion question)
+        : base(id, question)
+    {
+    }
+
+    private protected override BoxAnswer Project(BoxAnswer answer) => answer;
+}
+
 /// <summary>A question id reserved in a <see cref="QuestionSet"/>, recording whether the set generated it.</summary>
 public readonly record struct ReservedId(string Value, bool Generated);

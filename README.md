@@ -11,6 +11,7 @@ A .NET SDK for the [TypeSafe AI](https://docs.typesafe.ai) System One API. Ask s
 - **Noul**: is this true? Returns the probability of yes.
 - **Choice**: which of these labels? Returns the most likely label plus a probability per label and a confidence.
 - **Score**: where on this scale? Returns the expected level plus a probability per level and a confidence.
+- **Box**: where is it in this image? Returns the four edges of a box around it and a confidence.
 
 > This is a community SDK and is not affiliated with or endorsed by TypeSafe AI.
 
@@ -98,6 +99,30 @@ var state = TypeSafeContent.FromNode(new JsonObject
 var state2 = TypeSafeContent.FromObject(new { message, orderId });
 ```
 
+### Images and boxes
+
+Images and box questions are experimental in the TypeSafe API. The SDK sends the required `TypeSafe-Danger-Zone-Images: true` header for any request that contains an image or a box question, and uploads images as `multipart/form-data` file parts.
+
+A `TypeSafeImage` can go anywhere content goes: the state, instructions, or criteria. Each one is sent under its `Reference`, a new UUID unless you choose one.
+
+```csharp
+var door   = await TypeSafeImage.FromFileAsync("door-camera.jpg");
+var badge  = TypeSafeImage.FromBytes(badgeBytes);
+
+var q = new QuestionSet();
+var match  = q.Noul(TypeSafeContent.FromText($"Is the person in `door` the person in {badge}?"));
+var person = q.Box("the person in `door`");
+
+var result = await client.SystemOneAsync(TypeSafeContent.FromObject(new { door }), q, new RequestOptions { Model = "jev-preview" });
+
+BoxAnswer box = result.Get(person);   // Box.Top/Bottom/Left/Right as fractions, Confidence (may be null)
+var (left, top, right, bottom) = box.Box.ToPixels(imageWidth, imageHeight);
+```
+
+To place an image inside text, use `TypeSafeContent.FromText` with an interpolated string. A plain interpolated `string` contains the image's reference but not the image. For references written into JSON by hand, attach the images with `content.WithAssets(...)`.
+
+Box questions need a model that supports them, such as `jev-preview`. A box answer is always a box, so ask a noul in the same request when the target may be absent.
+
 ### Parallel Questions
 
 ```csharp
@@ -117,6 +142,7 @@ var client = new TypeSafeClient(new TypeSafeClientOptions
     Timeout = TimeSpan.FromSeconds(10),  // per attempt
     MaxRetries = 2,                      // 408, 429, 5xx, connection and timeout failures
     RetryPolicy = new RetryPolicy { MaxDelay = TimeSpan.FromSeconds(5) },
+    LongContext = false,                 // sends TypeSafe-Danger-Zone-Long-Context: true when set
 });
 ```
 
@@ -130,6 +156,7 @@ await client.SystemOneAsync(state, q, new RequestOptions
     Model = "jev-1.13.0",   // pin a version when you have calibrated thresholds
     Timeout = TimeSpan.FromSeconds(3),
     MaxRetries = 0,
+    LongContext = true,
     ExtraHeaders = new Dictionary<string, string> { ["X-Trace"] = traceId },
     ExtraBody = new JsonObject { ["experimental_flag"] = true },   // forward compatibility
 });
@@ -141,7 +168,7 @@ All failures derive from `TypeSafeException`:
 
 | Exception | When |
 | --- | --- |
-| `TypeSafeAuthenticationException` (401), `TypeSafePermissionDeniedException` (403), `TypeSafeBadRequestException` (400), `TypeSafeUnprocessableEntityException` (422), `TypeSafeNotFoundException` (404) | The API rejected the request. `Body`, `Headers`, `ErrorMessage`, `RequestId` are populated. |
+| `TypeSafeAuthenticationException` (401), `TypeSafePermissionDeniedException` (403), `TypeSafeBadRequestException` (400), `TypeSafeUnprocessableEntityException` (422), `TypeSafeNotFoundException` (404), `TypeSafeRequestTooLargeException` (413) | The API rejected the request. `Body`, `Headers`, `ErrorMessage`, `RequestId` are populated. |
 | `TypeSafeRateLimitException` (429) | Rate limited after retries. `RetryAfter` carries the server's hint. |
 | `TypeSafeInternalServerException` (5xx) | Server failure after retries. `IsOverloaded` is true for 529. |
 | `TypeSafeConnectionException`, `TypeSafeTimeoutException` | The API could not be reached, or every attempt exceeded the per-attempt timeout. |

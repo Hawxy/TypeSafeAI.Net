@@ -43,6 +43,15 @@ public sealed class ChoiceQuestion : Question
     [JsonIgnore]
     public IEnumerable<string> Labels => Criteria.Keys;
 
+    internal override void CollectAssets(AssetCollector assets)
+    {
+        assets.Add(Instructions);
+        foreach (var description in Criteria.Values)
+        {
+            assets.Add(description);
+        }
+    }
+
     internal static Dictionary<string, TypeSafeContent?> CriteriaFromLabels(IEnumerable<string> labels)
     {
         var criteria = new Dictionary<string, TypeSafeContent?>(StringComparer.Ordinal);

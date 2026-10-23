@@ -4,12 +4,13 @@ using System.Text.Json.Serialization;
 namespace TypeSafeAI;
 
 /// <summary>
-/// An answer to a question. One of <see cref="NoulAnswer"/>, <see cref="ChoiceAnswer"/>, or <see cref="ScoreAnswer"/>.
+/// An answer to a question. One of <see cref="NoulAnswer"/>, <see cref="ChoiceAnswer"/>, <see cref="ScoreAnswer"/>, or <see cref="BoxAnswer"/>.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(NoulAnswer), NoulAnswer.TypeName)]
 [JsonDerivedType(typeof(ChoiceAnswer), ChoiceAnswer.TypeName)]
 [JsonDerivedType(typeof(ScoreAnswer), ScoreAnswer.TypeName)]
+[JsonDerivedType(typeof(BoxAnswer), BoxAnswer.TypeName)]
 public abstract class Answer
 {
     private protected Answer()
@@ -35,6 +36,10 @@ public abstract class Answer
     /// <summary>Casts to a score answer.</summary>
     /// <exception cref="TypeSafeResponseValidationException">The answer is of a different type.</exception>
     public ScoreAnswer AsScore() => this as ScoreAnswer ?? throw WrongType(ScoreAnswer.TypeName);
+
+    /// <summary>Casts to a box answer.</summary>
+    /// <exception cref="TypeSafeResponseValidationException">The answer is of a different type.</exception>
+    public BoxAnswer AsBox() => this as BoxAnswer ?? throw WrongType(BoxAnswer.TypeName);
 
     private TypeSafeResponseValidationException WrongType(string expected) =>
         new($"Expected a {expected} answer but the API returned a {Type} answer.");

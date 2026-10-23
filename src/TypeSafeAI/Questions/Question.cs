@@ -3,12 +3,13 @@ using System.Text.Json.Serialization;
 namespace TypeSafeAI;
 
 /// <summary>
-/// A judgment to ask about a state. One of <see cref="NoulQuestion"/>, <see cref="ChoiceQuestion"/>, or <see cref="ScoreQuestion"/>.
+/// A judgment to ask about a state. One of <see cref="NoulQuestion"/>, <see cref="ChoiceQuestion"/>, <see cref="ScoreQuestion"/>, or <see cref="BoxQuestion"/>.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(NoulQuestion), NoulQuestion.TypeName)]
 [JsonDerivedType(typeof(ChoiceQuestion), ChoiceQuestion.TypeName)]
 [JsonDerivedType(typeof(ScoreQuestion), ScoreQuestion.TypeName)]
+[JsonDerivedType(typeof(BoxQuestion), BoxQuestion.TypeName)]
 public abstract class Question
 {
     private protected Question(TypeSafeContent? instructions)
@@ -16,7 +17,7 @@ public abstract class Question
         Instructions = instructions;
     }
 
-    /// <summary>The wire name of this question type: <c>noul</c>, <c>choice</c>, or <c>score</c>.</summary>
+    /// <summary>The wire name of this question type: <c>noul</c>, <c>choice</c>, <c>score</c>, or <c>box</c>.</summary>
     [JsonIgnore]
     public abstract string Type { get; }
 
@@ -24,6 +25,9 @@ public abstract class Question
     [JsonPropertyName("instructions")]
     [JsonPropertyOrder(1)]
     public TypeSafeContent? Instructions { get; }
+
+    // Adds the images from every piece of content the question sends.
+    internal virtual void CollectAssets(AssetCollector assets) => assets.Add(Instructions);
 
     /// <summary>Creates a yes/no question. The answer is the probability of yes.</summary>
     /// <param name="instructions">The statement or question to judge.</param>
@@ -61,4 +65,7 @@ public abstract class Question
     /// <summary>Creates a rating question whose ordered levels come from an enum's members, see <see cref="LabelAttribute"/>.</summary>
     public static ScoreQuestion Score<TEnum>(TypeSafeContent? instructions) where TEnum : struct, Enum =>
         new(instructions, EnumLabels<TEnum>.ToScoreCriteria());
+
+    /// <summary>Creates a question that locates what the instructions describe in an image. The answer is a box around it.</summary>
+    public static BoxQuestion Box(TypeSafeContent? instructions) => new(instructions);
 }

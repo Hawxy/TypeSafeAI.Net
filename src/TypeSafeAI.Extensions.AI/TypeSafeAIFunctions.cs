@@ -121,12 +121,26 @@ public static class TypeSafeAIFunctions
                         ["confidence"] = score.Confidence,
                         ["probabilities"] = ToObject(score.Probabilities),
                     },
+                    BoxAnswer box => new JsonObject
+                    {
+                        ["type"] = box.Type,
+                        ["box"] = ToObject(box.Box),
+                        ["confidence"] = box.Confidence,
+                    },
                     _ => new JsonObject { ["type"] = pair.Value.Type },
                 };
             }
 
             return new JsonObject { ["model"] = response.Model, ["answers"] = answers };
         }
+
+        private static JsonObject ToObject(BoxCoordinates box) => new()
+        {
+            ["top"] = box.Top,
+            ["bottom"] = box.Bottom,
+            ["left"] = box.Left,
+            ["right"] = box.Right,
+        };
 
         private static JsonObject ToObject<TKey>(IReadOnlyDictionary<TKey, double> values)
             where TKey : notnull

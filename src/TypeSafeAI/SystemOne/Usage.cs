@@ -5,7 +5,7 @@ namespace TypeSafeAI;
 /// <summary>Token usage reported for a request.</summary>
 public sealed class Usage
 {
-    /// <summary>Input tokens consumed. Input tokens are what TypeSafe bills.</summary>
+    /// <summary>Input tokens consumed, including the tokens for images. Input tokens are what TypeSafe bills.</summary>
     [JsonPropertyName("input_tokens")]
     public int? InputTokens { get; init; }
 
