@@ -54,6 +54,7 @@ public class TypeSafeApiException : TypeSafeException
             401 => new TypeSafeAuthenticationException(message, requestId),
             403 => new TypeSafePermissionDeniedException(message, requestId),
             404 => new TypeSafeNotFoundException(message, requestId),
+            413 => new TypeSafeRequestTooLargeException(message, requestId),
             422 => new TypeSafeUnprocessableEntityException(message, requestId),
             429 => new TypeSafeRateLimitException(message, requestId),
             >= 500 and <= 599 => new TypeSafeInternalServerException(statusCode, message, requestId),
@@ -93,6 +94,8 @@ public class TypeSafeApiException : TypeSafeException
         401 => "invalid or missing API key",
         403 => "permission denied",
         404 => "not found",
+        413 => "request too large",
+        415 => "unsupported media type",
         422 => "request validation failed",
         429 => "rate limit exceeded",
         529 => "service overloaded",
@@ -116,6 +119,10 @@ public sealed class TypeSafePermissionDeniedException(string message, string? re
 /// <summary>404: the resource does not exist.</summary>
 public sealed class TypeSafeNotFoundException(string message, string? requestId = null)
     : TypeSafeApiException(HttpStatusCode.NotFound, message, requestId);
+
+/// <summary>413: the request is over a size limit, such as the body size or an image's size or dimensions.</summary>
+public sealed class TypeSafeRequestTooLargeException(string message, string? requestId = null)
+    : TypeSafeApiException(HttpStatusCode.RequestEntityTooLarge, message, requestId);
 
 /// <summary>422: the request failed validation.</summary>
 public sealed class TypeSafeUnprocessableEntityException(string message, string? requestId = null)

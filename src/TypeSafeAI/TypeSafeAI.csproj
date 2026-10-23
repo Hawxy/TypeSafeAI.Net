@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>.NET client for the TypeSafe AI System One API. Ask typed noul (yes/no), choice, and score questions about text or structured state and get calibrated, confidence-scored answers back.</Description>
+    <Description>.NET client for the TypeSafe AI System One API. Ask typed noul (yes/no), choice, score, and box questions about text, structured state, or images and get calibrated, confidence-scored answers back.</Description>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     <!-- The binder skips options it cannot construct, such as TimeProvider and RetryPolicy internals; those are code-only settings. -->
     <NoWarn>$(NoWarn);SYSLIB1100;SYSLIB1101</NoWarn>

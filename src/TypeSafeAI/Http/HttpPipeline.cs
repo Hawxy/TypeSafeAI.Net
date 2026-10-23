@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -15,7 +14,6 @@ namespace TypeSafeAI;
 // Sends one logical request through a Polly pipeline (retry around a per-attempt timeout) and maps failures to SDK exceptions.
 internal sealed class HttpPipeline
 {
-    private static readonly MediaTypeHeaderValue JsonContentType = new("application/json") { CharSet = "utf-8" };
     private static readonly ResiliencePropertyKey<RequestState> StateKey = new("typesafe.request");
 
     private readonly HttpClient _http;
@@ -48,7 +46,7 @@ internal sealed class HttpPipeline
     public async Task<TResponse> SendAsync<TResponse>(
         HttpMethod method,
         Uri uri,
-        byte[]? body,
+        RequestBody? body,
         JsonTypeInfo<TResponse> typeInfo,
         RequestOptions? requestOptions,
         CancellationToken cancellationToken)
@@ -73,7 +71,7 @@ internal sealed class HttpPipeline
 
         if (body is not null && _logger.IsEnabled(LogLevel.Trace))
         {
-            Log.RequestBody(_logger, Encoding.UTF8.GetString(body));
+            Log.RequestBody(_logger, Encoding.UTF8.GetString(body.Json));
         }
 
         var context = ResilienceContextPool.Shared.Get(cancellationToken);
@@ -221,32 +219,27 @@ internal sealed class HttpPipeline
         request.Headers.TryAddWithoutValidation("X-TypeSafe-SDK", SdkHeaders.SdkHeader);
         request.Headers.TryAddWithoutValidation("X-TypeSafe-Runtime", SdkHeaders.RuntimeHeader);
 
-        foreach (var header in _options.DefaultHeaders)
-        {
-            SetHeader(request, header.Key, header.Value);
-        }
+        SetHeaders(request, state.Body?.Headers);
+        SetHeaders(request, _options.DefaultHeaders);
+        SetHeaders(request, state.RequestOptions?.ExtraHeaders);
 
-        if (state.RequestOptions?.ExtraHeaders is { } extra)
-        {
-            foreach (var header in extra)
-            {
-                SetHeader(request, header.Key, header.Value);
-            }
-        }
-
-        if (state.Body is { } body)
-        {
-            request.Content = new ByteArrayContent(body);
-            request.Content.Headers.ContentType = JsonContentType;
-        }
+        request.Content = state.Body?.CreateContent();
 
         return request;
     }
 
-    private static void SetHeader(HttpRequestMessage request, string name, string value)
+    private static void SetHeaders(HttpRequestMessage request, IEnumerable<KeyValuePair<string, string>>? headers)
     {
-        request.Headers.Remove(name);
-        request.Headers.TryAddWithoutValidation(name, value);
+        if (headers is null)
+        {
+            return;
+        }
+
+        foreach (var (name, value) in headers)
+        {
+            request.Headers.Remove(name);
+            request.Headers.TryAddWithoutValidation(name, value);
+        }
     }
 
     private static TResponse Deserialize<TResponse>(byte[] bytes, JsonTypeInfo<TResponse> typeInfo, string? requestId)
@@ -304,7 +297,7 @@ internal sealed class HttpPipeline
     }
 
     // Per-request state shared between the attempts of one logical request.
-    private sealed class RequestState(HttpMethod method, Uri uri, byte[]? body, RequestOptions? requestOptions, int maxRetries, TimeSpan timeout)
+    private sealed class RequestState(HttpMethod method, Uri uri, RequestBody? body, RequestOptions? requestOptions, int maxRetries, TimeSpan timeout)
     {
         public HttpMethod Method { get; } = method;
 
@@ -312,7 +305,7 @@ internal sealed class HttpPipeline
 
         public string Path { get; } = uri.AbsolutePath;
 
-        public byte[]? Body { get; } = body;
+        public RequestBody? Body { get; } = body;
 
         public RequestOptions? RequestOptions { get; } = requestOptions;
 

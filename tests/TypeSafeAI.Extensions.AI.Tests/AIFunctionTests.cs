@@ -40,6 +40,21 @@ public class AIFunctionTests
     }
 
     [Test]
+    public async Task Function_returns_box_answers_with_edges_and_confidence()
+    {
+        var typeSafe = FakeTypeSafeClient.Answering(("mug", FakeTypeSafeClient.Box(0.25, 0.82, 0.44, 0.84, null)));
+        var function = TypeSafeAIFunctions.Create(typeSafe, new Dictionary<string, Question> { ["mug"] = Question.Box("the mug") }, "find", "desc");
+
+        var json = (JsonObject)(await function.InvokeAsync(new AIFunctionArguments { ["state"] = "photo" }))!;
+
+        var mug = json["answers"]!["mug"]!;
+        await Assert.That(mug["type"]!.GetValue<string>()).IsEqualTo("box");
+        await Assert.That(mug["box"]!["left"]!.GetValue<double>()).IsEqualTo(0.44);
+        await Assert.That(mug["box"]!["bottom"]!.GetValue<double>()).IsEqualTo(0.82);
+        await Assert.That(mug["confidence"]).IsNull();
+    }
+
+    [Test]
     public async Task Function_accepts_json_state_and_requires_the_argument()
     {
         var typeSafe = FakeTypeSafeClient.Answering(("q", FakeTypeSafeClient.Noul(0.5)));

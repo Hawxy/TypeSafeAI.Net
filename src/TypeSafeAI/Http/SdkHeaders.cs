@@ -7,6 +7,10 @@ internal static class SdkHeaders
 {
     public const string RequestIdHeader = "x-typesafe-request-id";
 
+    public const string ImagesHeader = "TypeSafe-Danger-Zone-Images";
+
+    public const string LongContextHeader = "TypeSafe-Danger-Zone-Long-Context";
+
     public static string Version { get; } = ResolveVersion();
 
     public static string UserAgent { get; } =

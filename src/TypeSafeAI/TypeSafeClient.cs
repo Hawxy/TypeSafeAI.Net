@@ -8,6 +8,9 @@ namespace TypeSafeAI;
 /// <summary>The TypeSafe API client.</summary>
 public sealed class TypeSafeClient : ITypeSafeClient, IDisposable
 {
+    private static readonly KeyValuePair<string, string> ImagesHeader = new(SdkHeaders.ImagesHeader, "true");
+    private static readonly KeyValuePair<string, string> LongContextHeader = new(SdkHeaders.LongContextHeader, "true");
+
     private readonly HttpClient _http;
     private readonly bool _ownsHttpClient;
     private readonly HttpPipeline _pipeline;
@@ -66,14 +69,32 @@ public sealed class TypeSafeClient : ITypeSafeClient, IDisposable
             throw new ArgumentException("The state must not be empty.", nameof(request));
         }
 
+        var assets = new AssetCollector();
+        assets.Add(request.State);
+        foreach (var question in request.Questions.Values)
+        {
+            ArgumentNullException.ThrowIfNull(question, nameof(request));
+            question.CollectAssets(assets);
+        }
+
         var payload = new SystemOneRequestPayload
         {
             State = request.State,
             Model = options?.Model ?? request.Model ?? Options.DefaultModel,
             Questions = request.Questions,
+            Assets = assets.Assets,
         };
 
-        var body = Serialize(payload, options?.ExtraBody);
+        var longContext = options?.LongContext ?? Options.LongContext;
+        KeyValuePair<string, string>[]? headers = (assets.RequiresImages, longContext) switch
+        {
+            (true, true) => [ImagesHeader, LongContextHeader],
+            (true, false) => [ImagesHeader],
+            (false, true) => [LongContextHeader],
+            _ => null,
+        };
+
+        var body = new RequestBody(Serialize(payload, options?.ExtraBody), assets.Assets, headers);
         return _pipeline.SendAsync(HttpMethod.Post, _systemOneUri, body, TypeSafeJsonContext.Default.SystemOneResponse, options, cancellationToken);
     }
 

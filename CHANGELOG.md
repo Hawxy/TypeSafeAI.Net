@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Box questions (`Question.Box`, `QuestionSet.Box`) that locate a target in an image, answered by `BoxAnswer` with normalized edges and an optional confidence.
+- Image assets: `TypeSafeImage` can be used anywhere content goes, inside text through `TypeSafeContent.FromText` with an interpolated string, or by reference with `TypeSafeContent.WithAssets`. Requests with images are uploaded as `multipart/form-data`.
+- Requests with images or box questions send `TypeSafe-Danger-Zone-Images: true`.
+- `LongContext` on `TypeSafeClientOptions` and `RequestOptions` sends `TypeSafe-Danger-Zone-Long-Context: true`.
+- `TypeSafeRequestTooLargeException` for status 413.
+
 ### Fixed
 
 - Request URIs keep any path segments in `BaseUrl` (e.g. `https://host/compatible/` resolves to `https://host/compatible/v1/systemone`), with or without a trailing slash.

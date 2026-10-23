@@ -175,6 +175,23 @@ public sealed class TypeSafeEvaluator : IEvaluator
 
                 break;
 
+            case BoxAnswer box when metric is StringMetric text:
+                var edges = new List<string>(4);
+                foreach (var (edge, value) in (ReadOnlySpan<(string, double)>)[("top", box.Box.Top), ("left", box.Box.Left), ("bottom", box.Box.Bottom), ("right", box.Box.Right)])
+                {
+                    var formatted = Format(value);
+                    metric.AddOrUpdateMetadata(MetadataPrefix + "box." + edge, formatted);
+                    edges.Add(edge + "=" + formatted);
+                }
+
+                text.Value = string.Join(' ', edges);
+                if (box.Confidence is { } confidence)
+                {
+                    metric.AddOrUpdateMetadata(MetadataPrefix + "confidence", Format(confidence));
+                }
+
+                break;
+
             default:
                 metric.AddDiagnostics(EvaluationDiagnostic.Warning($"Question '{questionId}' is a {question.Type} question but the API returned a {answer.Type} answer."));
                 break;

@@ -30,6 +30,11 @@ public sealed class TypeSafeClientOptions
     /// <summary>Decides which failures are retried and how long to wait.</summary>
     public RetryPolicy RetryPolicy { get; set; } = new();
 
+    /// <summary>
+    /// Sends <c>TypeSafe-Danger-Zone-Long-Context: true</c> with System One requests to use long context. Defaults to <see langword="false"/>.
+    /// </summary>
+    public bool LongContext { get; set; }
+
     /// <summary>Headers added to every request. Per-request headers take precedence.</summary>
     public IDictionary<string, string> DefaultHeaders { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 

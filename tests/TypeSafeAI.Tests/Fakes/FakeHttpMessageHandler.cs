@@ -48,8 +48,26 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-        Requests.Add(new CapturedRequest(request.Method, request.RequestUri!, body, request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase)));
+        string? body = null;
+        var parts = new List<CapturedPart>();
+        if (request.Content is MultipartFormDataContent form)
+        {
+            foreach (var part in form)
+            {
+                var disposition = part.Headers.ContentDisposition!;
+                var bytes = await part.ReadAsByteArrayAsync(cancellationToken);
+                parts.Add(new CapturedPart(disposition.Name!.Trim('"'), disposition.FileName?.Trim('"'), part.Headers.ContentType?.ToString(), bytes));
+            }
+
+            // The JSON request part, so body assertions work for multipart requests too.
+            body = parts[0].Text;
+        }
+        else if (request.Content is not null)
+        {
+            body = await request.Content.ReadAsStringAsync(cancellationToken);
+        }
+
+        Requests.Add(new CapturedRequest(request.Method, request.RequestUri!, body, request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase), parts));
 
         if (_responses.Count == 0)
         {
@@ -60,4 +78,9 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
     }
 }
 
-public sealed record CapturedRequest(HttpMethod Method, Uri Uri, string? Body, IReadOnlyDictionary<string, string> Headers);
+public sealed record CapturedRequest(HttpMethod Method, Uri Uri, string? Body, IReadOnlyDictionary<string, string> Headers, IReadOnlyList<CapturedPart> Parts);
+
+public sealed record CapturedPart(string Name, string? FileName, string? ContentType, byte[] Bytes)
+{
+    public string Text => Encoding.UTF8.GetString(Bytes);
+}

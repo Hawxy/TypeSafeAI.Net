@@ -8,6 +8,7 @@ public sealed class SystemOneResponse : TypeSafeResponse
     private IReadOnlyDictionary<string, NoulAnswer>? _nouls;
     private IReadOnlyDictionary<string, ChoiceAnswer>? _choices;
     private IReadOnlyDictionary<string, ScoreAnswer>? _scores;
+    private IReadOnlyDictionary<string, BoxAnswer>? _boxes;
 
     /// <summary>The model that produced the answers.</summary>
     [JsonPropertyName("model")]
@@ -32,6 +33,10 @@ public sealed class SystemOneResponse : TypeSafeResponse
     /// <summary>The score answers only, keyed by question id.</summary>
     [JsonIgnore]
     public IReadOnlyDictionary<string, ScoreAnswer> Scores => _scores ??= Filter<ScoreAnswer>();
+
+    /// <summary>The box answers only, keyed by question id.</summary>
+    [JsonIgnore]
+    public IReadOnlyDictionary<string, BoxAnswer> Boxes => _boxes ??= Filter<BoxAnswer>();
 
     /// <summary>Gets an answer by question id.</summary>
     /// <exception cref="KeyNotFoundException">No answer exists for the id.</exception>

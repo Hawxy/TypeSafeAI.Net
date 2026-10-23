@@ -24,6 +24,13 @@ public sealed class NoulQuestion : Question
     [JsonPropertyName("criteria")]
     [JsonPropertyOrder(2)]
     public NoulCriteria? Criteria { get; }
+
+    internal override void CollectAssets(AssetCollector assets)
+    {
+        assets.Add(Instructions);
+        assets.Add(Criteria?.Yes);
+        assets.Add(Criteria?.No);
+    }
 }
 
 /// <summary>Clarifies the boundary between a yes and a no answer.</summary>
