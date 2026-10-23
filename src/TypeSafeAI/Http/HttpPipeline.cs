@@ -33,7 +33,17 @@ internal sealed class HttpPipeline
         _pipeline = BuildPipeline(options.MaxRetries, options.Timeout, options.RetryPolicy);
     }
 
-    public Uri Resolve(string path) => new(_options.BaseUrl, path);
+    // Appends a relative path to BaseUrl, keeping any path segments the base already has.
+    public Uri Resolve(string path)
+    {
+        var baseUrl = _options.BaseUrl;
+        if (!baseUrl.AbsolutePath.EndsWith('/'))
+        {
+            baseUrl = new UriBuilder(baseUrl) { Path = baseUrl.AbsolutePath + "/" }.Uri;
+        }
+
+        return new Uri(baseUrl, path.TrimStart('/'));
+    }
 
     public async Task<TResponse> SendAsync<TResponse>(
         HttpMethod method,

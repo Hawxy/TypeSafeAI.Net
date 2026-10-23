@@ -41,7 +41,7 @@ public sealed class TypeSafeClient : ITypeSafeClient, IDisposable
         _ownsHttpClient = ownsHttpClient;
         Options = options;
         _pipeline = new HttpPipeline(httpClient, options, logger);
-        _systemOneUri = _pipeline.Resolve("/v1/systemone");
+        _systemOneUri = _pipeline.Resolve("v1/systemone");
         Models = new ModelsResource(_pipeline);
     }
 

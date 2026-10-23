@@ -21,7 +21,7 @@ public class HeadersAndOptionsTests
         });
 
         var request = handler.Requests[0];
-        await Assert.That(request.Uri.ToString()).IsEqualTo("https://example.test/v1/systemone");
+        await Assert.That(request.Uri.ToString()).IsEqualTo("https://example.test/base/v1/systemone");
         await Assert.That(request.Headers["Authorization"]).IsEqualTo("Bearer test-key");
         await Assert.That(request.Headers["Accept"]).IsEqualTo("application/json");
         await Assert.That(request.Headers["User-Agent"]).StartsWith("TypeSafeAI/");
@@ -30,6 +30,23 @@ public class HeadersAndOptionsTests
         await Assert.That(request.Headers["X-Default"]).IsEqualTo("d");
         await Assert.That(request.Headers["X-Extra"]).IsEqualTo("e");
         await Assert.That(request.Headers["X-Override"]).IsEqualTo("request");
+    }
+
+    [Test]
+    [Arguments("https://example.test", "https://example.test/v1/systemone", "https://example.test/v1/models")]
+    [Arguments("https://example.test/", "https://example.test/v1/systemone", "https://example.test/v1/models")]
+    [Arguments("https://example.test/compatible", "https://example.test/compatible/v1/systemone", "https://example.test/compatible/v1/models")]
+    [Arguments("https://example.test/compatible/", "https://example.test/compatible/v1/systemone", "https://example.test/compatible/v1/models")]
+    public async Task Base_url_path_is_preserved(string baseUrl, string systemOneUri, string modelsUri)
+    {
+        var handler = new FakeHttpMessageHandler().Ok(TestClient.NoulResponse).Ok("""{"models":[]}""");
+        using var client = TestClient.Create(handler, o => o.BaseUrl = new Uri(baseUrl));
+
+        await client.SystemOneAsync(TestClient.UrgencyRequest());
+        await client.Models.ListAsync();
+
+        await Assert.That(handler.Requests[0].Uri.ToString()).IsEqualTo(systemOneUri);
+        await Assert.That(handler.Requests[1].Uri.ToString()).IsEqualTo(modelsUri);
     }
 
     [Test]
